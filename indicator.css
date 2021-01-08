@@ -1,0 +1,7 @@
+#indicator {
+    position: relative; 
+    width: 115px;
+    height: 20px;
+    background-color: red;
+    border: 1px solid #dddddd;
+}

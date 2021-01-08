@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Content-Security-Policy" content="script-src 'self' 'unsafe-inline';" />
+    <link rel="stylesheet" href="./node_modules/bootstrap/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="./indicator.css">
+    <link href="./node_modules/tabulator-tables/dist/css/tabulator.min.css" rel="stylesheet">
+    <script type="text/javascript" src="./node_modules/tabulator-tables/dist/js/tabulator.min.js"></script>
+    <title>JS8Assistant</title>
+    <style>
+        body{
+            background-color: #eee;
+            margin: auto;
+            margin-left: 25px;
+            margin-right: 25px;
+        }
+        .center {
+            margin: auto;
+            margin-top: 25px;
+            width: 50%;
+            border-radius: 25px;
+            padding: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="left">
+        <h1>JS8Assistant</h1>
+        <h4>An application to assist with using JS8Call</h4>
+    </div>
+    <div id="indicator">API&nbsp;Disconnected</div>
+    <br>
+    <div id="data-table"></div>
+    <br>
+    <!--<form>
+    <button value="buttonall" type="submit" class="btn btn-primary">Send all to JS8Call</button>
+    <button value="buttonnew" type="submit" class="btn btn-primary">Send new to JS8Call</button>
+    <button value="buttonrevised" type="submit" class="btn btn-primary">Send revised to JS8Call</button>
+    <button value="buttonclear" type="submit" class="btn btn-primary">Clear Status</button>
+    </form>-->
+    <script src="./index.js"></script>
+</body>
+</html>
