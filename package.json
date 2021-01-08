@@ -9,9 +9,9 @@
   "author": "RocketManRC",
   "license": "MIT",
   "dependencies": {
-    "@trippnology/lib-js8call": "^0.13.1",
-    "electron-first-run": "^3.0.0",
+    "@trippnology/lib-js8call": "^0.16.1",
     "bootstrap": "3.3.6",
+    "electron-first-run": "^3.0.0",
     "jquery": "^3.5.1",
     "moment": "^2.29.1",
     "tabulator-tables": "^4.9.3"

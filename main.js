@@ -77,7 +77,7 @@ function createWindow()
   }));
   
   // Open the DevTools for testing if needed
-  win.webContents.openDevTools();
+  // win.webContents.openDevTools();
   
   win.webContents.on('did-finish-load', () => {
       var title = win.getTitle();
@@ -104,9 +104,9 @@ function createWindow()
             firstRun.clear();
           }
       }
-      
-      // If we have connected to JS8Call already show it in UI
-      win.webContents.send('apistatus', "connected"); 
+
+      if(connected)
+          win.webContents.send('apistatus', "connected"); // indicate in UI we are connected
   });
 }
 
@@ -145,7 +145,7 @@ function timeoutCheck()
     
     if(!connected)
     {
-        //js8.tcp.connect(); // doesn't exist yet :-)
+        js8.tcp.connect(); 
     }
 }
 
@@ -172,7 +172,9 @@ js8.on('tcp.connected', (connection) => {
     );
     
     connected = true;
-    win.webContents.send('apistatus', "connected"); // indicate in UI we are connected
+    // The following only works if the window has been opened but doesn't seem to
+    // cause any problems if it isn't.
+    win.webContents.send('apistatus', "connected"); // indicate in UI we are disconnected
 });
 
 js8.on('tcp.disconnected', (s) => {
