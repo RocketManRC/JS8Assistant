@@ -24,9 +24,11 @@ SOFTWARE.
 
 // This is the server side (node.js) part of this Electron application.
 
-const { app, BrowserWindow, dialog, ipcMain} = require('electron')
-const url = require('url')
-const path = require('path')
+const { app, BrowserWindow, dialog, ipcMain} = require('electron');
+const url = require('url');
+const path = require('path');
+//const callsign = require('callsign/src/node');
+//console.log(callsign.getAmateurRadioDetailedByCallsign('va1uav'));
 
 let win;
 let winHeight;
@@ -34,9 +36,9 @@ let connected = false; // this is to track the state of the JS8Call API connecti
 
 
 if(process.platform !== 'darwin')
-    winHeight = 640; // make room for the menu bar for windows and linux
+    winHeight = 790; // make room for the menu bar for windows and linux
 else
-    winHeight = 600;
+    winHeight = 750;
 
 
 const dialogOptions = {
@@ -55,14 +57,15 @@ const dialogOptions = {
   };
   
 function quitApp()
-{   app.quit();
+{   
+    app.quit();
 }
   
 function createWindow() 
 {
   // Create the browser window.
   win = new BrowserWindow({
-    width: 800,
+    width: 925,
     height: winHeight,
     webPreferences: {
       nodeIntegration: true
@@ -77,7 +80,7 @@ function createWindow()
   }));
   
   // Open the DevTools for testing if needed
-  // win.webContents.openDevTools();
+  //win.webContents.openDevTools();
   
   win.webContents.on('did-finish-load', () => {
       var title = win.getTitle();
@@ -125,18 +128,31 @@ app.on('activate', () => {
 });
 
 // listener for buttonall
-ipcMain.on("sendall",(e, data)=>{
-  sendToJS8Call(data);
+ipcMain.on("displayqth",(e, data)=>{
+  //sendToJS8Call(data);
+  console.log("displayqth")
 });
 
 // listener for buttonnew
-ipcMain.on("sendnew",(e, data)=>{
-  sendToJS8Call(data);
+ipcMain.on("displaymap",(e, data)=>{
+  //sendToJS8Call(data);
+  console.log("displaymap")
 });
 
 // listener for buttonrevised
-ipcMain.on("sendrevised",(e, data)=>{
-  sendToJS8Call(data);
+ipcMain.on("displayhistory",(e, data)=>{
+  //sendToJS8Call(data);
+  console.log("displayhistory")
+});
+
+
+/*
+    *** This is the JS8Call interface using lib-js8call ***
+*/
+
+const js8 = require('@trippnology/lib-js8call')({
+    tcp: { enabled: true, port: 2442 },
+    udp: { enabled: false, port: 2242,  },
 });
 
 function timeoutCheck()
@@ -151,17 +167,6 @@ function timeoutCheck()
 
 setInterval(timeoutCheck, 5000);
 
-/*
-    *** This is the JS8Call interface using lib-js8call ***
-*/
-
-const js8 = require('@trippnology/lib-js8call')({
-    tcp: { enabled: true, port: 2442 },
-    udp: { enabled: false, port: 2242,  },
-    //get_metadata_at_launch: false,
-    //exit_when_js8call_closed: false,
-});
-
 js8.on('tcp.connected', (connection) => {
     // At this point, we have setup the connection
     console.log(
@@ -174,7 +179,18 @@ js8.on('tcp.connected', (connection) => {
     connected = true;
     // The following only works if the window has been opened but doesn't seem to
     // cause any problems if it isn't.
-    win.webContents.send('apistatus', "connected"); // indicate in UI we are disconnected
+    win.webContents.send('apistatus', "connected"); // indicate in UI we are connected
+    
+    js8.station.getGrid().then((grid) => {
+        console.log('station grid');
+        console.log(grid);        
+        console.log(js8.station.grid);
+   });
+    
+    js8.mode.getSpeed().then((mode) => {
+        console.log('mode');
+        console.log(mode);
+    });
 });
 
 js8.on('tcp.disconnected', (s) => {
@@ -190,24 +206,7 @@ js8.on('tcp-error', (e) => {
     console.log();
 });
 
-// Only listen to events you are interested in.
-js8.on('ping', (packet) => {
-	console.log('[Ping] %s v%s', packet.params.NAME, packet.params.VERSION);
-});
-
-function successCallback(result) {
-  console.log(result);
-}
-
-function failureCallback(error) {
-  console.error(error);
-}
-
 js8.on('rig.freq', (packet) => {
-    //js8.rx.getText().then(successCallback, failureCallback);
-    //js8.rx.getCallActivityExtended().then(successCallback, failureCallback);	
-    //js8.rx.getCallActivityDetailed().then(successCallback, failureCallback);	
-    
 	console.log(
 		'[Rig] Frequency has been changed to %s (%s). Offset: %s',
 		packet.params.DIAL,
@@ -216,9 +215,17 @@ js8.on('rig.freq', (packet) => {
 	);
 });
 
+function pttSuccessCallback(result) {
+  console.log(result);
+}
+
+function pttFailureCallback(error) {
+  console.error(error);
+}
+
 js8.on('rig.ptt', (packet) => {
 	console.log('[Rig] PTT is %s', packet.value);
-	js8.tx.getText().then(successCallback, failureCallback);
+	js8.tx.getText().then(pttSuccessCallback, pttFailureCallback);
 });
 
 js8.on('rx.to_me', (packet) => {
@@ -229,24 +236,215 @@ js8.on('station.callsign', (packet) => {
 	console.log('Station Callsign: %s', packet.value);
 });
 
-js8.on('rx.to_me', (packet) => {
-	/*
-	 * At this point, you know this is a message to you
-	 * such as "M7GMT: VA1UAV SNR -02 ~" and you can act as you wish.
-	 */
-	console.log("message to me");
-	//console.log(packet);
-});
-
 js8.on('packet', (packet) => {
     // Do your custom stuff
     //console.log(packet);
 });
 
+// Function to check letters and numbers for callsign validation
+function alphanumeric(inputtxt)
+{
+    var letterNumber = /^[0-9a-zA-Z/]+$/;
+    
+    if(inputtxt.match(letterNumber))
+    {
+        return true;
+    }
+    else
+    {
+        return false;
+    }
+}
+  
 js8.on('rx.activity', (packet) => {
     // Do your custom stuff
-    console.log(packet);
-    win.webContents.send('activity', packet);
+    //console.log(packet);
+    win.webContents.send('activity', packet); // should send 'value' below instead
+    
+	//var o = JSON.parse(message);
+	var o = packet;
+	var type = o.type;
+	var offset = o.params.OFFSET;
+	var snr = o.params.SNR;
+	var speed = o.params.SPEED;
+	var timedrift = o.params.TDRIFT.toPrecision(3) * 1000;
+	//var utc = timeFromTimestamp(o.params.UTC);
+	var utc = o.params.UTC;
+	var value = o.value;
+	
+	//console.log(message);
+	
+	var n = value.indexOf(":");
+	
+	if(n > 0)
+	{
+		cs = value.substring(0, n);	
+
+        if(cs != "" && alphanumeric(cs)) // this is not perfect because there is no real indication in JS8Call there is a call sign...
+        {
+            // sending range and bearing to renderer
+            //updateRngBrg(js8.station.grid, cs, "");  
+            updateRngBrgFromHamqthGrid(js8.station.grid, cs);
+        }		
+	}
 });
+
+js8.on('rx.directed', (packet) => {
+    // Do your custom stuff
+    //console.log(packet);
+    //win.webContents.send('activity', packet);
+});
+
+// JS8Call requires a grid square of the station in setup so we should always have that.
+// If an activity packet coming in is CQ then there will be a grid square as well so we use that.
+// Otherwise we look up the lat and lon from Hamqth.com if we can. I think that using the
+// gridsquare will be more accurate so we update with that if we get a CQ after the first
+// lookup. Complicated!
+
+async function hamqthLatLngFromCallsign(stationgrid, callsign)
+{
+    const fetch = require("node-fetch");
+    const url = "https://www.hamqth.com/dxcc_json.php?callsign=" + callsign;
+    
+    let result = [];
+    let lat;
+    let lng;
+
+    try 
+    {
+        const response = await fetch(url);
+        const json = await response.json();
+        lat = json.lat;
+        lng = json.lng;
+        result = [lat, lng];
+    } 
+    catch(error) 
+    {
+        console.log(error);
+    }
+    
+    return result;
+}
+
+
+async function updateRngBrg(stationgrid, callsign, grid)
+{
+    let Maidenhead = require('maidenhead'); // this is installed by lib-js8call
+    
+    let cs1 = new Maidenhead();
+    cs1.locator = stationgrid;
+    
+    
+    if(grid == "")
+    {
+        // asynchronous part
+        let latLng = await hamqthLatLngFromCallsign('FN84dp', callsign);
+        
+        if(latLng.length != 0)    
+        {
+            console.log(latLng);
+            
+            let cs2 = new Maidenhead(latLng[0], latLng[1], 2);
+
+            let rng = Math.round(cs1.distanceTo(cs2, 'm')/1000);
+            let brg = cs1.bearingTo(cs2);
+        
+            let rngBrg = [rng, brg];
+        
+            console.log(rngBrg);
+                               
+            win.webContents.send('rngbrg', rngBrg);
+        }
+        else
+            console.log('no lat/lng from hamqth.com or maybe no internet');            
+    }
+    else // synchronous part
+    {
+        console.log("grid found");
+        
+        cs2 = new Maidenhead();
+        cs2.locator = grid;
+        
+        let rng = Math.round(cs1.distanceTo(cs2, 'm')/1000);
+        let brg = cs1.bearingTo(cs2);
+        
+        let rngBrg = [rng, brg];
+        
+        console.log(rngBrg);
+        
+        win.webContents.send('rngbrg', rngBrg);
+    }
+}
+
+//updateRngBrg('FN84', 'm7gmt', "");
+
+//updateRngBrg('FN84', 'm7gmt', "JO02");
+
+async function hamqthGridFromCallsign(callsign)
+{
+    const fetch = require("node-fetch");
+    const url = "https://www.hamqth.com/" + callsign;
+    
+    let grid;
+
+    try 
+    {
+        const response = await fetch(url);
+        const html = await response.text();
+        if(html.indexOf('https://aprs.fi/#!addr=') > 0)
+        {
+            let parts = html.split('https://aprs.fi/#!addr=');
+            console.log(parts);
+            if(parts.length != 0)
+                grid = parts[1].split('"', 1);     
+            else
+                grid = [];   
+        }
+        else
+            grid = [];
+    } 
+    catch(error) 
+    {
+        console.log(error);
+    }
+    
+    return grid;
+}
+
+//console.log(hamqthGridFromCallsign('va1uav'));
+
+async function updateRngBrgFromHamqthGrid(stationgrid, callsign)
+{
+    let Maidenhead = require('maidenhead'); // this is installed by lib-js8call
+    
+    let cs1 = new Maidenhead();
+    cs1.locator = stationgrid;
+    
+    let grid = await hamqthGridFromCallsign(callsign);
+    
+    console.log(grid);
+    
+    if(grid.length != 0)    
+    {
+        console.log(grid[0]);
+        
+        let cs2 = new Maidenhead();
+        cs2.locator = grid[0];
+
+        let rng = Math.round(cs1.distanceTo(cs2, 'm')/1000);
+        let brg = cs1.bearingTo(cs2);
+    
+        let rngBrg = [rng, brg];
+    
+        console.log(rngBrg);
+                           
+        win.webContents.send('rngbrg', rngBrg);
+    }
+    else
+        console.log('no grid from hamqth.com or maybe no internet');            
+}
+
+//updateRngBrgFromHamqthGrid('fn84dp', 'm7gmt');
+//updateRngBrgFromHamqthGrid('fn84dp', 'kk4wrg');
 
 

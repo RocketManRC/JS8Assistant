@@ -25,7 +25,7 @@ SOFTWARE.
 // This is the client side (browser) part of this Electron application.
 
 let $ = jQuery = require('jquery');
-const {ipcRenderer} = require('electron')
+const {ipcRenderer} = require('electron');
 
 
 // Function to check letters and numbers for callsign validation
@@ -96,7 +96,7 @@ ipcRenderer.on('apistatus', (event, message) =>
 
 var scrolling = 0;
 
-// This processes the data from JS8Call, sent here from the server process (main.js)
+// This processes the activity data from JS8Call, sent here from the server process (main.js)
 ipcRenderer.on('activity', (event, message) => 
 {
 	//var o = JSON.parse(message);
@@ -110,13 +110,15 @@ ipcRenderer.on('activity', (event, message) =>
 	var utc = o.params.UTC;
 	var value = o.value;
 	
+	//console.log(message);
+	
 	var n = value.indexOf(":");
 	
 	if(n > 0)
 	{
-	    callsign = value.substring(0, n);	
+	    cs = value.substring(0, n);	
 	    
-	    var rows = table.searchRows("callsign", "=", callsign);
+	    var rows = table.searchRows("callsign", "=", cs);
         
 	    if(rows[0]) // there should only be one entry for this call sign or something is wrong!
 	    {
@@ -133,30 +135,31 @@ ipcRenderer.on('activity', (event, message) =>
 	    }
 	    else
 	    {     
-            //console.log(type);
-            //console.log(offset);
-            //console.log(snr);
-            //console.log(speed);
-            //console.log(timedrift);
-            //console.log(utc);
-            //console.log(value);
-            //console.log(callsign)
-            
-            if(callsign != "" && alphanumeric(callsign)) // this is not perfect because there is no real indication in JS8Call there is a call sign...
+            if(cs != "" && alphanumeric(cs)) // this is not perfect because there is no real indication in JS8Call there is a call sign...
             {
                 if(scrolling != 0)
                 {
                     console.log("not sorting on new row while scrolled");
-                    table.addRow({callsign:callsign, offset: offset, snr:snr, timedrift:timedrift, utc:utc, status:"new"}, true); // add to top ** test
+                    table.addRow({callsign:cs, offset: offset, snr:snr, timedrift:timedrift, utc:utc, status:"new"}, true); // add to top ** test
                  }
                  else
                  {
-                    table.addRow({callsign:callsign, offset: offset, snr:snr, timedrift:timedrift, utc:utc, status:"new"}, true); // add row to top
+                    table.addRow({callsign:cs, offset: offset, snr:snr, timedrift:timedrift, utc:utc, status:"new"}, true); // add row to top
                     table.setSort(table.getSorters()[0].field, table.getSorters()[0].dir); // sort the table by whatever column and direction is selected
                  }
             }
 	    }
     }
+});
+
+ipcRenderer.on('rngbrg', (event, message) => 
+{
+    console.log(message);
+    
+    var rows = table.searchRows("callsign", "=", cs);
+    
+    if(rows[0]) // there should only be one entry for this call sign or something is wrong!
+        rows[0].update({rng: message[0], brg:message[1]});
 });
 
 function updateStatus(row, status, arr)
@@ -168,125 +171,23 @@ function updateStatus(row, status, arr)
     return arr;
 }
 
-function markAndReturnNewSent()
-{
-    var data = table.searchRows("status", "=", "new");
-    
-    var arr = [];
-    
-    if(data)
-    {
-        data.forEach(row => arr = updateStatus(row, "sent", arr));
-    }
-    
-    return arr;
-}
-
-function markAndReturnRevisedSent()
-{
-    var data = table.searchRows("status", "=", "revised");
-    
-    var arr = [];
-    
-    if(data)
-    {
-        data.forEach(row => arr = updateStatus(row, "sent", arr));
-    }
-        
-    return arr;
-}
-
-function getSent()
-{
-    var data = table.searchRows("status", "=", "sent");
-    
-    var arr = [];
-    
-    if(data)
-    {
-        // I am marking it sent again just because it is easy with the current code structure
-        // This could be optimized...
-        data.forEach(row => arr = updateStatus(row, "sent", arr));
-    }
-    
-    return arr;
-}
-
-function markNewCleared()
-{
-    var data = table.searchRows("status", "=", "new");
-    //console.log(data);
-    
-    if(data)
-    {
-        data.forEach(row => updateStatus(row, "", []));
-    }
-}
-
-function markRevisedCleared()
-{
-    var data = table.searchRows("status", "=", "revised");
-    //console.log(data);
-    
-    if(data)
-    {
-        data.forEach(row => updateStatus(row, "", []));
-    }
-}
-
-function markSentCleared()
-{
-    var data = table.searchRows("status", "=", "sent");
-    //console.log(data);
-    
-    if(data)
-    {
-        data.forEach(row => updateStatus(row, "", []));
-    }
-}
-
-function markAndReturnAllSent()
-{
-    sent1 = markAndReturnNewSent();
-    sent2 = markAndReturnRevisedSent();
-    sent = getSent();
-    sent.sort();
-    
-    return sent;
-}
-
-function markCleared()
-{
-    markNewCleared();
-    markRevisedCleared();
-    markSentCleared();
-}
-
 $("form button").click(function(ev){
     ev.preventDefault()// cancel form submission
-    if($(this).attr("value")=="buttonall")
+    
+    if($(this).attr("value")=="buttonqth")
     {
-        sent = markAndReturnAllSent();
-        ipcRenderer.send("sendall", sent);
+        $("#additional-info").html("<h5>This is a test</h5>");
+        //ipcRenderer.send("displayqth", sent);
     }
-    else if($(this).attr("value")=="buttonnew")
+    else if($(this).attr("value")=="buttonmap")
     {
-        sent = markAndReturnNewSent();
-        sent.sort();
-        ipcRenderer.send("sendnew", sent);
+        ipcRenderer.send("displaymap", sent);
     }
-    else if($(this).attr("value")=="buttonrevised")
+    else if($(this).attr("value")=="buttonhistory")
     {
-        sent = markAndReturnRevisedSent();
-        sent.sort();
-        ipcRenderer.send("sendrevised", sent);
-    }
-    else if($(this).attr("value")=="buttonclear")
-    {
-        markCleared();
+        ipcRenderer.send("displayhistory", sent);
     }
 });
-
 
 var tabledata = [
  	//{id:1, callsign:"AA9BCD", offset: "1510", snr:"-09", timedrift:"150", utc:""}
@@ -375,6 +276,8 @@ var table = new Tabulator("#data-table", {
 	 	{title:"SNR", field:"snr", width:75},
 	 	{title:"Time Delta (ms)", field:"timedrift"},
 	 	{title:"UTC", field:"utc", formatter:formatUtcCell, headerSortStartingDir:"desc"},
+	 	{title:"RNG", field:"rng", width:75},
+	 	{title:"BRG", field:"brg", width:75},
 	 	{title:"Status", field:"status"}
  	],
  	initialSort:[
