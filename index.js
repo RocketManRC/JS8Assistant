@@ -81,16 +81,26 @@ function formatUtcCell(cell, formatterParams, onRendered)
 
 ipcRenderer.on('apistatus', (event, message) => 
 {
+    let $indicator = $('#indicator-api');
     if(message == "connected")
     {
-        $('#indicator').css('background-color', '#B2FF66');
-        $("div#indicator").text("API Connected");
+        $indicator.removeClass('btn-secondary btn-danger').addClass('btn-success');
     }
     else
     {
-        $('#indicator').css('background-color', 'red');
-        $("div#indicator").text("API Disconnected");
+        $indicator.removeClass('btn-secondary btn-success').addClass('btn-danger');
     }
+});
+
+ipcRenderer.on('rig.ptt.on', () => 
+{
+    // Using opposite colours here: red to show PTT is active
+    $('#indicator-ptt').removeClass('btn-secondary btn-success').addClass('btn-danger');
+});
+
+ipcRenderer.on('rig.ptt.off', () => 
+{
+    $('#indicator-ptt').removeClass('btn-secondary btn-danger').addClass('btn-success');
 });
 
 
