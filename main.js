@@ -36,9 +36,9 @@ let connected = false; // this is to track the state of the JS8Call API connecti
 
 
 if(process.platform !== 'darwin')
-    winHeight = 790; // make room for the menu bar for windows and linux
+    winHeight = 740; // make room for the menu bar for windows and linux
 else
-    winHeight = 750;
+    winHeight = 700;
 
 
 const dialogOptions = {
@@ -65,7 +65,7 @@ function createWindow()
 {
   // Create the browser window.
   win = new BrowserWindow({
-    width: 925,
+    width: 822,
     height: winHeight,
     webPreferences: {
       nodeIntegration: true
@@ -80,11 +80,11 @@ function createWindow()
   }));
   
   // Open the DevTools for testing if needed
-  //win.webContents.openDevTools();
+  // win.webContents.openDevTools();
   
   win.webContents.on('did-finish-load', () => {
-      var title = win.getTitle();
-      var version = app.getVersion();
+      let title = win.getTitle();
+      let version = app.getVersion();
   
       win.setTitle(title + " v" + version);
       
@@ -127,19 +127,19 @@ app.on('activate', () => {
   }
 });
 
-// listener for buttonall
+// listener for buttonqth
 ipcMain.on("displayqth",(e, data)=>{
   //sendToJS8Call(data);
   console.log("displayqth")
 });
 
-// listener for buttonnew
+// listener for buttonmap
 ipcMain.on("displaymap",(e, data)=>{
   //sendToJS8Call(data);
   console.log("displaymap")
 });
 
-// listener for buttonrevised
+// listener for buttonhistory
 ipcMain.on("displayhistory",(e, data)=>{
   //sendToJS8Call(data);
   console.log("displayhistory")
@@ -252,7 +252,7 @@ js8.on('packet', (packet) => {
 // Function to check letters and numbers for callsign validation
 function alphanumeric(inputtxt)
 {
-    var letterNumber = /^[0-9a-zA-Z/]+$/;
+    let letterNumber = /^[0-9a-zA-Z/]+$/;
     
     if(inputtxt.match(letterNumber))
     {
@@ -264,50 +264,60 @@ function alphanumeric(inputtxt)
     }
 }
 
+/*
+    This is where we process activity packets from JS8Call. Some is done here and some
+    in the client.
+*/
+
 let callsigns = []; // keep an array of callsigns that were looked up so we don't do it again
-  
-js8.on('rx.activity', (packet) => {
-    // Do your custom stuff
-    //console.log(packet);
-    win.webContents.send('activity', packet); // should send 'value' below instead
+
+function processPacket(packet)
+{
+    // first send to the client where we will process
+    win.webContents.send('activity', packet); // we are going to process again in index.js
     
-	//var o = JSON.parse(message);
-	var o = packet;
-	var type = o.type;
-	var offset = o.params.OFFSET;
-	var snr = o.params.SNR;
-	var speed = o.params.SPEED;
-	var timedrift = o.params.TDRIFT.toPrecision(3) * 1000;
-	//var utc = timeFromTimestamp(o.params.UTC);
-	var utc = o.params.UTC;
-	var value = o.value;
+    // we also extract the callsign here to go and search for range, bearing and info (TBD)
+	let o = packet;
+	let type = o.type;
+	let offset = o.params.OFFSET;
+	let snr = o.params.SNR;
+	let speed = o.params.SPEED;
+	let timedrift = o.params.TDRIFT.toPrecision(3) * 1000;
+	let utc = o.params.UTC;
+	let value = o.value;
 	
-	//console.log(message);
-	
-	var n = value.indexOf(":");
+	let n = value.indexOf(":");
 	
 	if(n > 0)
 	{
-		cs = value.substring(0, n);	
+		let cs = value.substring(0, n);	
 
         // In the logic following, checking for alphanumeric is not perfect however 
         // there is no real indication in JS8Call that there is a call sign in a packet...
         if(cs != "" && alphanumeric(cs) && callsigns.indexOf(cs) < 0) 
         {
             // sending range and bearing to renderer
-            //updateRngBrg(js8.station.grid, cs, "");  
             updateRngBrgFromHamqthGrid(js8.station.grid, cs);
+            updateRngBrgFromQrzcqGrid(js8.station.grid, cs);
             callsigns.push(cs);
             console.log("updated rngbrg for " + cs);
         }		
 	}
+}
+  
+js8.on('rx.activity', (packet) => {
+    processPacket(packet);
 });
 
 js8.on('rx.directed', (packet) => {
+    //processPacket(packet);
+});
+
+//js8.on('rx.directed', (packet) => {
     // Do your custom stuff
     //console.log(packet);
     //win.webContents.send('activity', packet);
-});
+//});
 
 // JS8Call requires a grid square of the station in setup so we should always have that.
 // If an activity packet coming in is CQ then there will be a grid square as well so we use that.
@@ -340,59 +350,6 @@ async function hamqthLatLngFromCallsign(stationgrid, callsign)
     return result;
 }
 
-
-async function updateRngBrg(stationgrid, callsign, grid)
-{
-    let Maidenhead = require('maidenhead'); // this is installed by lib-js8call
-    
-    let cs1 = new Maidenhead();
-    cs1.locator = stationgrid;
-    
-    
-    if(grid == "")
-    {
-        // asynchronous part
-        let latLng = await hamqthLatLngFromCallsign('FN84dp', callsign);
-        
-        if(latLng.length != 0)    
-        {
-            console.log(latLng);
-            
-            let cs2 = new Maidenhead(latLng[0], latLng[1], 2);
-
-            let rng = Math.round(cs1.distanceTo(cs2, 'm')/1000);
-            let brg = cs1.bearingTo(cs2);
-        
-            let rngBrg = [rng, brg];
-        
-            console.log(rngBrg);
-                               
-            win.webContents.send('rngbrg', rngBrg);
-        }
-        else
-            console.log('no lat/lng from hamqth.com or maybe no internet');            
-    }
-    else // synchronous part
-    {
-        console.log("grid found");
-        
-        cs2 = new Maidenhead();
-        cs2.locator = grid;
-        
-        let rng = Math.round(cs1.distanceTo(cs2, 'm')/1000);
-        let brg = cs1.bearingTo(cs2);
-        
-        let rngBrg = [rng, brg];
-        
-        console.log(rngBrg);
-        
-        win.webContents.send('rngbrg', rngBrg);
-    }
-}
-
-//updateRngBrg('FN84', 'm7gmt', "");
-
-//updateRngBrg('FN84', 'm7gmt', "JO02");
 
 async function hamqthGridFromCallsign(callsign)
 {
@@ -434,7 +391,37 @@ async function updateRngBrgFromHamqthGrid(stationgrid, callsign)
     let cs1 = new Maidenhead();
     cs1.locator = stationgrid;
     
-    //let grid = await hamqthGridFromCallsign(callsign);
+    let grid = await hamqthGridFromCallsign(callsign);
+    
+    console.log(grid);
+    
+    if(grid.length != 0)    
+    {
+        console.log(grid[0]);
+        
+        let cs2 = new Maidenhead();
+        cs2.locator = grid[0];
+
+        let rng = Math.round(cs1.distanceTo(cs2, 'm')/1000);
+        let brg = cs1.bearingTo(cs2);
+    
+        let rngBrgCs = {"rng":rng, "brg":brg, "cs": callsign};
+    
+        console.log(rngBrgCs);
+                           
+        win.webContents.send('rngbrgcs', rngBrgCs);
+    }
+    else
+        console.log('no grid from hamqth.com or maybe no internet');            
+}
+
+async function updateRngBrgFromQrzcqGrid(stationgrid, callsign)
+{
+    let Maidenhead = require('maidenhead'); // this is installed by lib-js8call
+    
+    let cs1 = new Maidenhead();
+    cs1.locator = stationgrid;
+    
     let grid = await qrzcqGridFromCallsign(callsign);
     
     console.log(grid);
@@ -449,11 +436,11 @@ async function updateRngBrgFromHamqthGrid(stationgrid, callsign)
         let rng = Math.round(cs1.distanceTo(cs2, 'm')/1000);
         let brg = cs1.bearingTo(cs2);
     
-        let rngBrg = [rng, brg];
+        let rngBrgCs = {"rng":rng, "brg":brg, "cs": callsign};
     
-        console.log(rngBrg);
+        console.log(rngBrgCs);
                            
-        win.webContents.send('rngbrg', rngBrg);
+        win.webContents.send('rngbrgcs', rngBrgCs);
     }
     else
         console.log('no grid from hamqth.com or maybe no internet');            

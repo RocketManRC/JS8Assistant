@@ -31,7 +31,7 @@ const shell = require('electron').shell;
 // Function to check letters and numbers for callsign validation
 function alphanumeric(inputtxt)
 {
-    var letterNumber = /^[0-9a-zA-Z/]+$/;
+    let letterNumber = /^[0-9a-zA-Z/]+$/;
     
     if(inputtxt.match(letterNumber))
     {
@@ -46,17 +46,17 @@ function alphanumeric(inputtxt)
 function timeFromTimestamp(ts)
 {
     let unix_timestamp = ts
-    var date = new Date(unix_timestamp);
+    let date = new Date(unix_timestamp);
     // Hours part from the timestamp
-    var hours = date.getUTCHours();
+    let hours = date.getUTCHours();
     // Minutes part from the timestamp
-    var minutes = "0" + date.getUTCMinutes();
+    let minutes = "0" + date.getUTCMinutes();
     // Seconds part from the timestamp
-    var seconds = "0" + date.getUTCSeconds();
-    var millis = "00" + date.getUTCMilliseconds();
+    let seconds = "0" + date.getUTCSeconds();
+    let millis = "00" + date.getUTCMilliseconds();
 
     // Will display time in 10:30:23.123 format
-    var formattedTime = hours + ':' + minutes.substr(-2) + ':' + seconds.substr(-2) + '.' + millis.substr(-3);
+    let formattedTime = hours + ':' + minutes.substr(-2) + ':' + seconds.substr(-2) + '.' + millis.substr(-3);
     
     return formattedTime;
 }
@@ -104,57 +104,63 @@ ipcRenderer.on('rig.ptt.off', () =>
 });
 
 
-var scrolling = 0;
+let scrolling = 0;
 
 // This processes the activity data from JS8Call, sent here from the server process (main.js)
 ipcRenderer.on('activity', (event, message) => 
 {
-	//var o = JSON.parse(message);
-	var o = message;
-	var type = o.type;
-	var offset = o.params.OFFSET;
-	var snr = o.params.SNR;
-	var speed = o.params.SPEED;
-	var timedrift = o.params.TDRIFT.toPrecision(3) * 1000;
-	//var utc = timeFromTimestamp(o.params.UTC);
-	var utc = o.params.UTC;
-	var value = o.value;
+	let o = message;
+	let type = o.type;
+	let offset = o.params.OFFSET;
+	let snr = o.params.SNR;
+	let speed = o.params.SPEED;
+	let timedrift = o.params.TDRIFT.toPrecision(3) * 1000;
+	let utc = o.params.UTC;
+	let value = o.value;
 	
 	//console.log(message);
 	
-	var n = value.indexOf(":");
+	let n = value.indexOf(":");
 	
 	if(n > 0)
 	{
-	    cs = value.substring(0, n);	
+	    let cs = value.substring(0, n);	
 	    
-	    var rows = table.searchRows("callsign", "=", cs);
+	    let rows = table.searchRows("callsign", "=", cs);
         
 	    if(rows[0]) // there should only be one entry for this call sign or something is wrong!
-	    {
-	        //if(rows[0].getData().status != 'new')
-	        //{
-                rows[0].update({offset: offset, snr:snr, timedrift:timedrift, utc:utc, status:"revised"});
-                
-                if(scrolling == 0)
-                {
-                    console.log("sorting on update row while not scrolled");
-                    table.setSort(table.getSorters()[0].field, table.getSorters()[0].dir); // sort the table by whatever column and direction is selected
-                }
-	        //}
+	    {		
+            rows[0].update({offset: offset, snr:snr, timedrift:timedrift, utc:utc});
+            
+            if(scrolling == 0)
+            {
+                //console.log("sorting on update row while not scrolled");
+                table.setSort(table.getSorters()[0].field, table.getSorters()[0].dir); // sort the table by whatever column and direction is selected
+            }
 	    }
 	    else
 	    {     
-            if(cs != "" && alphanumeric(cs)) // this is not perfect because there is no real indication in JS8Call there is a call sign...
+	        // In the logic following, checking for alphanumeric is not perfect however 
+            // there is no real indication in JS8Call that there is a call sign in a packet...
+            if(cs != "" && alphanumeric(cs)) 
             {
+		        let stats;
+		        
+		        if(value.indexOf("HEARTBEAT") >= 0)
+		            status = "HB";
+		        else if(value.indexOf("CQ") >= 0)
+		            status = "CQ";
+		        else
+		            status = "QSO";
+		        
                 if(scrolling != 0)
                 {
-                    console.log("not sorting on new row while scrolled");
-                    table.addRow({callsign:cs, offset: offset, snr:snr, timedrift:timedrift, utc:utc, status:"new"}, true); // add to top ** test
+                    //console.log("not sorting on new row while scrolled");
+                    table.addRow({callsign:cs, offset: offset, snr:snr, timedrift:timedrift, utc:utc, status:status}, true); // add row to top
                  }
                  else
                  {
-                    table.addRow({callsign:cs, offset: offset, snr:snr, timedrift:timedrift, utc:utc, status:"new"}, true); // add row to top
+                    table.addRow({callsign:cs, offset: offset, snr:snr, timedrift:timedrift, utc:utc, status:status}, true); // add row to top
                     table.setSort(table.getSorters()[0].field, table.getSorters()[0].dir); // sort the table by whatever column and direction is selected
                  }
             }
@@ -162,20 +168,22 @@ ipcRenderer.on('activity', (event, message) =>
     }
 });
 
-ipcRenderer.on('rngbrg', (event, message) => 
+ipcRenderer.on('rngbrgcs', (event, message) => 
 {
-    console.log(message);
+    //console.log(message);
     
-    var rows = table.searchRows("callsign", "=", cs);
+    let cs = message.cs;
+    
+    let rows = table.searchRows("callsign", "=", cs);
     
     if(rows[0]) // there should only be one entry for this call sign or something is wrong!
-        rows[0].update({rng: message[0], brg:message[1]});
+        rows[0].update({rng: message.rng, brg:message.brg});
 });
 
 function updateStatus(row, status, arr)
 {
     row.update({"status":status}); 
-    var rowData = row.getData();
+    let rowData = row.getData();
     arr.push(rowData.callsign);
     
     return arr;
@@ -199,19 +207,19 @@ $("form button").click(function(ev){
     }
 });
 
-var tabledata = [
+let tabledata = [
  	//{id:1, callsign:"AA9BCD", offset: "1510", snr:"-09", timedrift:"150", utc:""}
  ];
  
 //create Tabulator on DOM element with id "data-table"
-var table = new Tabulator("#data-table", {
+let table = new Tabulator("#data-table", {
  	height:367, // set height of table (in CSS or here), this enables the Virtual DOM and improves render speed dramatically (can be any valid css height value)
     //selectable:true, *** row selection is disabled for now
     rowSelected:function(row){
         row.getElement().style.backgroundColor = "#85C1E9";
     },
     scrollVertical:function(top){
-        console.log(top);
+        //console.log(top);
         scrolling = top; // will be zero when at top and therefore sorting will be allowed
 
         // as soon as we scroll back to top we may as well sort again
@@ -219,13 +227,17 @@ var table = new Tabulator("#data-table", {
             table.setSort(table.getSorters()[0].field, table.getSorters()[0].dir); // sort the table by whatever column and direction is selected        
     },
     rowDeselected:function(row){
-        if(row.getData().status == "new")
+        if(row.getData().status == "HB")
         {
-            row.getElement().style.backgroundColor = "#B2FF66";
+            row.getElement().style.backgroundColor = "#FFA07A";
         }
-        else if(row.getData().status == "revised")
+        else if(row.getData().status == "QSO")
         {
             row.getElement().style.backgroundColor = "#FFFF66";
+        }
+        else if(row.getData().status == "CQ")
+        {
+            row.getElement().style.backgroundColor = "#66FFB2";
         }
         else
         {
@@ -281,13 +293,17 @@ var table = new Tabulator("#data-table", {
  	data:tabledata, //assign data to table
  	layout:"fitColumns", //fit columns to width of table (optional)
     rowFormatter:function(row){
-        if(row.getData().status == "new")
+        if(row.getData().status == "HB")
         {
-            row.getElement().style.backgroundColor = "#B2FF66";
+            row.getElement().style.backgroundColor = "#FFA07A";
         }
-        else if(row.getData().status == "revised")
+        else if(row.getData().status == "QSO")
         {
             row.getElement().style.backgroundColor = "#FFFF66";
+        }
+        else if(row.getData().status == "CQ")
+        {
+            row.getElement().style.backgroundColor = "#66FFB2";
         }
         else
         {
@@ -295,14 +311,14 @@ var table = new Tabulator("#data-table", {
         }
     },
  	columns:[ //Define Table Columns
-	 	{title:"Call Sign", field:"callsign"},
-	 	{title:"Offset", field:"offset", width:75},
-	 	{title:"SNR", field:"snr", width:75},
-	 	{title:"Time Delta (ms)", field:"timedrift"},
-	 	{title:"UTC", field:"utc", formatter:formatUtcCell, headerSortStartingDir:"desc"},
-	 	{title:"RNG", field:"rng", width:75},
-	 	{title:"BRG", field:"brg", width:75},
-	 	{title:"Status", field:"status"}
+	 	{title:"Call Sign", field:"callsign", width:125},
+	 	{title:"Offset", field:"offset", width:80, sorter:"number"},
+	 	{title:"Time Delta (ms)", field:"timedrift", width:150, sorter:"number"},
+	 	{title:"UTC", field:"utc", width:125, formatter:formatUtcCell, headerSortStartingDir:"desc"},
+	 	{title:"RNG", field:"rng", width:75, sorter:"number"},
+	 	{title:"BRG", field:"brg", width:75, sorter:"number"},
+	 	{title:"SNR", field:"snr", width:75, sorter:"number"},
+	 	{title:"Status", field:"status", width:85}
  	],
  	initialSort:[
         {column:"utc", dir:"desc"} //sort by this first
