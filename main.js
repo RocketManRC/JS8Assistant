@@ -365,7 +365,7 @@ async function hamqthGridFromCallsign(callsign)
         if(html.indexOf('https://aprs.fi/#!addr=') > 0)
         {
             let parts = html.split('https://aprs.fi/#!addr=');
-            console.log(parts);
+            //console.log(parts);
             if(parts.length != 0)
                 grid = parts[1].split('"', 1);     
             else
@@ -393,11 +393,11 @@ async function updateRngBrgFromHamqthGrid(stationgrid, callsign)
     
     let grid = await hamqthGridFromCallsign(callsign);
     
-    console.log(grid);
+    //console.log(grid);
     
     if(grid.length != 0)    
     {
-        console.log(grid[0]);
+        //console.log(grid[0]);
         
         let cs2 = new Maidenhead();
         cs2.locator = grid[0];
@@ -424,11 +424,11 @@ async function updateRngBrgFromQrzcqGrid(stationgrid, callsign)
     
     let grid = await qrzcqGridFromCallsign(callsign);
     
-    console.log(grid);
+    //console.log(grid);
     
     if(grid.length != 0)    
     {
-        console.log(grid[0]);
+        //console.log(grid[0]);
         
         let cs2 = new Maidenhead();
         cs2.locator = grid[0];
@@ -438,12 +438,12 @@ async function updateRngBrgFromQrzcqGrid(stationgrid, callsign)
     
         let rngBrgCs = {"rng":rng, "brg":brg, "cs": callsign};
     
-        console.log(rngBrgCs);
+        //console.log(rngBrgCs);
                            
         win.webContents.send('rngbrgcs', rngBrgCs);
     }
     else
-        console.log('no grid from hamqth.com or maybe no internet');            
+        console.log('no grid from qrzcq.com or maybe no internet');            
 }
 
 //updateRngBrgFromHamqthGrid('fn84dp', 'm7gmt');

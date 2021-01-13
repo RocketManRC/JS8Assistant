@@ -264,30 +264,6 @@ let table = new Tabulator("#data-table", {
                 let callsign = row.getData().callsign;
                 shell.openExternal('https://www.pskreporter.info/pskmap.html?preset&callsign='+callsign+'&mode=JS8&timerange=3600&distunit=miles&hideunrec=1&blankifnone=1');
             }
-        },
-        {
-            label:"Status Clear",
-            action:function(e, row){
-                row.update({"status":""});
-            }
-        },
-        {
-            label:"Status New",
-            action:function(e, row){
-                row.update({"status":"new"});
-            }
-        },
-        {
-            label:"Status Revised",
-            action:function(e, row){
-                row.update({"status":"revised"});
-            }
-        },
-        {
-            label:"Status Sent",
-            action:function(e, row){
-                row.update({"status":"sent"});
-            }
         }
     ],
  	data:tabledata, //assign data to table
