@@ -26,7 +26,7 @@ SOFTWARE.
 
 let $ = jQuery = require('jquery');
 const {ipcRenderer} = require('electron');
-
+const shell = require('electron').shell;
 
 // Function to check letters and numbers for callsign validation
 function alphanumeric(inputtxt)
@@ -242,9 +242,15 @@ var table = new Tabulator("#data-table", {
         {
             label:"Open QRZ.com profile",
             action:function(e, row){
-                const shell = require('electron').shell;
                 let callsign = row.getData().callsign;
                 shell.openExternal('https://www.qrz.com/db/?callsign='+callsign);
+            }
+        },
+        {
+            label:"Show on PSKreporter",
+            action:function(e, row){
+                let callsign = row.getData().callsign;
+                shell.openExternal('https://www.pskreporter.info/pskmap.html?preset&callsign='+callsign+'&mode=JS8&timerange=3600&distunit=miles&hideunrec=1&blankifnone=1');
             }
         },
         {
