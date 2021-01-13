@@ -4,48 +4,55 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="Content-Security-Policy" content="script-src 'self' 'unsafe-inline';" />
-    <link rel="stylesheet" href="./node_modules/bootstrap/dist/css/bootstrap.min.css">
-    <link rel="stylesheet" href="./indicator.css">
-    <link href="./node_modules/tabulator-tables/dist/css/tabulator.min.css" rel="stylesheet">
-    <script type="text/javascript" src="./node_modules/tabulator-tables/dist/js/tabulator.min.js"></script>
     <title>JS8Assistant</title>
-    <style>
-        body{
-            background-color: #eee;
-            margin: auto;
-            margin-left: 25px;
-            margin-right: 25px;
-        }
-        .center {
-            margin: auto;
-            margin-top: 25px;
-            width: 50%;
-            border-radius: 25px;
-            padding: 10px;
-        }
-    </style>
+    <link rel="stylesheet" href="./node_modules/bootstrap/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="./node_modules/tabulator-tables/dist/css/tabulator.min.css">
+    <link rel="stylesheet" href="./style.css">
 </head>
 <body>
-    <div class="left">
-        <h1>JS8Assistant</h1>
-        <h4>An application to assist with using JS8Call</h4>
-    </div>
-    <div id="indicator">API&nbsp;Disconnected</div>
-    <br>
-    <div id="data-table"></div>
-    <br>
-    <div class="panel panel-primary">
-        <div class="panel-heading"><h4>Additional Info</h4></div>
-        <div class="panel-body">
-            <div id="additional-info"><h5 id="hellomarkdown">Additional info goes here</h5></div>
+    <div class="container-fluid">
+        <div class="row">
+            <div class="col-sm-10">
+                <h1>JS8Assistant</h1>
+                <p class="lead mb-0 mb-sm-3">An application to assist with using JS8Call</p>
+            </div>
+            <div class="col-sm-2">
+                <div class="btn-group mt-3 mb-3 float-sm-right indicators" role="group" aria-label="Indicators">
+                    <button id="indicator-api" type="button" class="btn btn-secondary">API</button>
+                    <button id="indicator-ptt" type="button" class="btn btn-secondary">PTT</button>
+                </div>           
+            </div>
+        </div>
+        <div class="row">
+            <div class="col">
+                <div id="data-table"></div>                
+            </div>
+        </div>
+        <div class="row">
+            <div class="col">
+                <div class="card mt-3">
+                    <div class="card-body">
+                        <h4 class="card-title">Additional Info</h4>
+                        <div id="additional-info">
+                            <p id="hellomarkdown">Additional info goes here</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col">
+                <form class="mt-3">
+                    <button value="buttonqth" type="submit" class="btn btn-primary">QTH Lookup</button>
+                    <button value="buttonmap" type="submit" class="btn btn-primary">Map Lookup</button>
+                    <button value="buttonhistory" type="submit" class="btn btn-primary">QSO History</button>
+                    <!--<button value="buttonclear" type="submit" class="btn btn-primary">Clear Status</button>-->
+                </form>
+            </div>
         </div>
     </div>
-    <form>
-    <button value="buttonqth" type="submit" class="btn btn-primary">QTH Lookup</button>
-    <button value="buttonmap" type="submit" class="btn btn-primary">Map Lookup</button>
-    <button value="buttonhistory" type="submit" class="btn btn-primary">QSO History</button>
-    <!--<button value="buttonclear" type="submit" class="btn btn-primary">Clear Status</button>-->
-    </form>
+
+    <script src="./node_modules/tabulator-tables/dist/js/tabulator.min.js"></script>
     <script src="./index.js"></script>
 </body>
 </html>

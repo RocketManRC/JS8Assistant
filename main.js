@@ -228,6 +228,14 @@ js8.on('rig.ptt', (packet) => {
 	js8.tx.getText().then(pttSuccessCallback, pttFailureCallback);
 });
 
+js8.on('rig.ptt.on', (packet) => {
+    win.webContents.send('rig.ptt.on');
+});
+
+js8.on('rig.ptt.off', (packet) => {
+    win.webContents.send('rig.ptt.off');
+});
+
 js8.on('rx.to_me', (packet) => {
 	console.log('[Message to me] %s', packet.value);
 });

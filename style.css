@@ -1,0 +1,8 @@
+body{
+    background-color: #eee;
+}
+
+.indicators button {
+	/* Disable the default finger cursor for now */
+	pointer-events: none;
+}

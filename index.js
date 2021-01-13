@@ -26,7 +26,7 @@ SOFTWARE.
 
 let $ = jQuery = require('jquery');
 const {ipcRenderer} = require('electron');
-
+const shell = require('electron').shell;
 
 // Function to check letters and numbers for callsign validation
 function alphanumeric(inputtxt)
@@ -81,16 +81,26 @@ function formatUtcCell(cell, formatterParams, onRendered)
 
 ipcRenderer.on('apistatus', (event, message) => 
 {
+    let $indicator = $('#indicator-api');
     if(message == "connected")
     {
-        $('#indicator').css('background-color', '#B2FF66');
-        $("div#indicator").text("API Connected");
+        $indicator.removeClass('btn-secondary btn-danger').addClass('btn-success');
     }
     else
     {
-        $('#indicator').css('background-color', 'red');
-        $("div#indicator").text("API Disconnected");
+        $indicator.removeClass('btn-secondary btn-success').addClass('btn-danger');
     }
+});
+
+ipcRenderer.on('rig.ptt.on', () => 
+{
+    // Using opposite colours here: red to show PTT is active
+    $('#indicator-ptt').removeClass('btn-secondary btn-success').addClass('btn-danger');
+});
+
+ipcRenderer.on('rig.ptt.off', () => 
+{
+    $('#indicator-ptt').removeClass('btn-secondary btn-danger').addClass('btn-success');
 });
 
 
@@ -227,6 +237,20 @@ var table = new Tabulator("#data-table", {
             label:"Delete Row",
             action:function(e, row){
                 row.delete();
+            }
+        },
+        {
+            label:"Open QRZ.com profile",
+            action:function(e, row){
+                let callsign = row.getData().callsign;
+                shell.openExternal('https://www.qrz.com/db/?callsign='+callsign);
+            }
+        },
+        {
+            label:"Show on PSKreporter",
+            action:function(e, row){
+                let callsign = row.getData().callsign;
+                shell.openExternal('https://www.pskreporter.info/pskmap.html?preset&callsign='+callsign+'&mode=JS8&timerange=3600&distunit=miles&hideunrec=1&blankifnone=1');
             }
         },
         {
