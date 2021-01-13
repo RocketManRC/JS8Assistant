@@ -255,6 +255,8 @@ function alphanumeric(inputtxt)
         return false;
     }
 }
+
+let callsigns = []; // keep an array of callsigns that were looked up so we don't do it again
   
 js8.on('rx.activity', (packet) => {
     // Do your custom stuff
@@ -280,11 +282,15 @@ js8.on('rx.activity', (packet) => {
 	{
 		cs = value.substring(0, n);	
 
-        if(cs != "" && alphanumeric(cs)) // this is not perfect because there is no real indication in JS8Call there is a call sign...
+        // In the logic following, checking for alphanumeric is not perfect however 
+        // there is no real indication in JS8Call that there is a call sign in a packet...
+        if(cs != "" && alphanumeric(cs) && callsigns.indexOf(cs) < 0) 
         {
             // sending range and bearing to renderer
             //updateRngBrg(js8.station.grid, cs, "");  
             updateRngBrgFromHamqthGrid(js8.station.grid, cs);
+            callsigns.push(cs);
+            console.log("updated rngbrg for " + cs);
         }		
 	}
 });
@@ -420,7 +426,8 @@ async function updateRngBrgFromHamqthGrid(stationgrid, callsign)
     let cs1 = new Maidenhead();
     cs1.locator = stationgrid;
     
-    let grid = await hamqthGridFromCallsign(callsign);
+    //let grid = await hamqthGridFromCallsign(callsign);
+    let grid = await qrzcqGridFromCallsign(callsign);
     
     console.log(grid);
     
@@ -447,4 +454,37 @@ async function updateRngBrgFromHamqthGrid(stationgrid, callsign)
 //updateRngBrgFromHamqthGrid('fn84dp', 'm7gmt');
 //updateRngBrgFromHamqthGrid('fn84dp', 'kk4wrg');
 
+async function qrzcqGridFromCallsign(callsign)
+{
+    const fetch = require("node-fetch");
+    const url = "https://www.qrzcq.com/call/" + callsign;
+    
+    let grid;
 
+    try 
+    {
+        const response = await fetch(url);
+        const html = await response.text();
+        if(html.indexOf('Locator:</b></td><td align="left">') > 0)
+        {
+            let parts = html.split('Locator:</b></td><td align="left">');
+            if(parts.length != 0)
+            {
+                grid = parts[1].split('<', 1);  
+                console.log(grid);   
+            }
+            else
+                grid = [];   
+        }
+        else
+            grid = [];
+    } 
+    catch(error) 
+    {
+        console.log(error);
+    }
+    
+    return grid;
+}
+
+//qrzcqGridFromCallsign('va1uav');
