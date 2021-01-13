@@ -240,6 +240,14 @@ var table = new Tabulator("#data-table", {
             }
         },
         {
+            label:"Open QRZ.com profile",
+            action:function(e, row){
+                const shell = require('electron').shell;
+                let callsign = row.getData().callsign;
+                shell.openExternal('https://www.qrz.com/db/?callsign='+callsign);
+            }
+        },
+        {
             label:"Status Clear",
             action:function(e, row){
                 row.update({"status":""});
