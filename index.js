@@ -28,6 +28,9 @@ let $ = jQuery = require('jquery');
 const {ipcRenderer} = require('electron');
 const shell = require('electron').shell;
 
+var config = require('./config');
+let distanceUnit = config.distanceUnit; // km or miles for PSKReporter and RNG column in table
+
 // Function to check letters and numbers for callsign validation
 function alphanumeric(inputtxt)
 {
@@ -43,42 +46,6 @@ function alphanumeric(inputtxt)
     }
 }
   
-function timeFromTimestamp(ts)
-{
-    let unix_timestamp = ts
-    let date = new Date(unix_timestamp);
-    // Hours part from the timestamp
-    let hours = date.getUTCHours();
-    // Minutes part from the timestamp
-    let minutes = "0" + date.getUTCMinutes();
-    // Seconds part from the timestamp
-    let seconds = "0" + date.getUTCSeconds();
-    let millis = "00" + date.getUTCMilliseconds();
-
-    // Will display time in 10:30:23.123 format
-    let formattedTime = hours + ':' + minutes.substr(-2) + ':' + seconds.substr(-2) + '.' + millis.substr(-3);
-    
-    return formattedTime;
-}
-
-/* Here is the example custom formatter from the Tabulator docs
-
-{title:"Name", field:"name", formatter:function(cell, formatterParams, onRendered){
-    //cell - the cell component
-    //formatterParams - parameters set for the column
-    //onRendered - function to call when the formatter has been rendered
-
-    return "Mr" + cell.getValue(); //return the contents of the cell;
-},
-}
-
-*/
-
-function formatUtcCell(cell, formatterParams, onRendered)
-{
-    return timeFromTimestamp(cell.getValue());
-}
-
 ipcRenderer.on('apistatus', (event, message) => 
 {
     let $indicator = $('#indicator-api');
@@ -233,6 +200,52 @@ let statusHeaderMenu = [
     },
 ];
 
+function timeFromTimestamp(ts)
+{
+    let unix_timestamp = ts
+    let date = new Date(unix_timestamp);
+    // Hours part from the timestamp
+    let hours = date.getUTCHours();
+    // Minutes part from the timestamp
+    let minutes = "0" + date.getUTCMinutes();
+    // Seconds part from the timestamp
+    let seconds = "0" + date.getUTCSeconds();
+    let millis = "00" + date.getUTCMilliseconds();
+
+    // Will display time in 10:30:23.123 format
+    let formattedTime = hours + ':' + minutes.substr(-2) + ':' + seconds.substr(-2) + '.' + millis.substr(-3);
+    
+    return formattedTime;
+}
+
+/* Here is the example custom formatter from the Tabulator docs
+
+{title:"Name", field:"name", formatter:function(cell, formatterParams, onRendered){
+    //cell - the cell component
+    //formatterParams - parameters set for the column
+    //onRendered - function to call when the formatter has been rendered
+
+    return "Mr" + cell.getValue(); //return the contents of the cell;
+},
+}
+
+*/
+
+function formatUtcCell(cell, formatterParams, onRendered)
+{
+    return timeFromTimestamp(cell.getValue());
+}
+
+function formatRngCell(cell, formatterParams, onRendered)
+{
+    if(distanceUnit == "km")
+        return cell.getValue();
+    else if(cell.getValue())
+        return Math.round(cell.getValue() * 0.62);
+    else
+        return cell.getValue();
+}
+
  
 //create Tabulator on DOM element with id "data-table"
 let table = new Tabulator("#data-table", {
@@ -269,13 +282,13 @@ let table = new Tabulator("#data-table", {
     },
     rowContextMenu:[
         {
-            label:"Delete Row",
+            label:"Delete Call Sign",
             action:function(e, row){
                 row.delete();
             }
         },
         {
-            label:"Open QRZ.com profile",
+            label:"Show QRZ.com profile",
             action:function(e, row){
                 let callsign = row.getData().callsign;
                 shell.openExternal('https://www.qrz.com/db/?callsign='+callsign);
@@ -285,7 +298,7 @@ let table = new Tabulator("#data-table", {
             label:"Show on PSKreporter",
             action:function(e, row){
                 let callsign = row.getData().callsign;
-                shell.openExternal('https://www.pskreporter.info/pskmap.html?preset&callsign='+callsign+'&mode=JS8&timerange=3600&distunit=miles&hideunrec=1&blankifnone=1');
+                shell.openExternal('https://www.pskreporter.info/pskmap.html?preset&callsign='+callsign+'&mode=JS8&timerange=3600&distunit=' + distanceUnit + '&hideunrec=1&blankifnone=1');
             }
         }
     ],
@@ -314,7 +327,7 @@ let table = new Tabulator("#data-table", {
 	 	{title:"Offset", field:"offset", width:80, sorter:"number"},
 	 	{title:"Time Delta (ms)", field:"timedrift", width:150, sorter:"number"},
 	 	{title:"UTC", field:"utc", width:125, formatter:formatUtcCell, headerSortStartingDir:"desc"},
-	 	{title:"RNG", field:"rng", width:75, sorter:"number"},
+	 	{title:"RNG", field:"rng", width:75, formatter:formatRngCell, sorter:"number"},
 	 	{title:"BRG", field:"brg", width:75, sorter:"number"},
 	 	{title:"SNR", field:"snr", width:75, sorter:"number"},
 	 	{title:"Status", field:"status", width:110, headerMenu:statusHeaderMenu}
