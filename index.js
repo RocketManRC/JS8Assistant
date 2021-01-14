@@ -147,26 +147,32 @@ ipcRenderer.on('rngbrgcs', (event, message) =>
         rows[0].update({rng: message.rng, brg:message.brg});
 });
 
-function updateStatus(row, status, arr)
+ipcRenderer.on('csinfo', (event, message) => 
 {
-    row.update({"status":status}); 
-    let rowData = row.getData();
-    arr.push(rowData.callsign);
+    let cs = message.callsign;
     
-    return arr;
-}
+    let rows = table.searchRows("callsign", "=", cs);
+    
+    if(rows[0]) // there should only be one entry for this call sign or something is wrong!
+        rows[0].update({info: message.info});
+});
 
 $("form button").click(function(ev){
     ev.preventDefault()// cancel form submission
     
     if($(this).attr("value")=="buttonqth")
     {
-        var selectedRows = table.getSelectedRows();
-        if(selectedRows.length == 1)
+        let selectedRows = table.getSelectedRows();
+        let rowCount = selectedRows.length;
+        
+        if(rowCount >= 1)
         {
-            let rowData = selectedRows[0].getData();
-            let callsign = rowData.callsign;
-            shell.openExternal('https://www.qrz.com/db/?callsign='+callsign);
+            for(i = 0; i < rowCount; i++)
+            {
+                let rowData = selectedRows[i].getData();
+                let callsign = rowData.callsign;
+                shell.openExternal('https://www.qrz.com/db/?callsign='+callsign);
+            }
         }
         else
             console.log("no rows selected");
@@ -176,12 +182,17 @@ $("form button").click(function(ev){
     }
     else if($(this).attr("value")=="buttonmap")
     {
-        var selectedRows = table.getSelectedRows();
-        if(selectedRows.length == 1)
+        let selectedRows = table.getSelectedRows();
+        let rowCount = selectedRows.length;
+        
+        if(rowCount >= 1)
         {
-            let rowData = selectedRows[0].getData();
-            let callsign = rowData.callsign;
-            shell.openExternal('https://www.pskreporter.info/pskmap.html?preset&callsign='+callsign+'&mode=JS8&timerange=3600&distunit=' + distanceUnit + '&hideunrec=1&blankifnone=1');
+            for(i = 0; i < rowCount; i++)
+            {
+                let rowData = selectedRows[i].getData();
+                let callsign = rowData.callsign;
+                shell.openExternal('https://www.pskreporter.info/pskmap.html?preset&callsign='+callsign+'&mode=JS8&timerange=3600&distunit=' + distanceUnit + '&hideunrec=1&blankifnone=1');
+            }
         }
         else
             console.log("no rows selected");
@@ -275,6 +286,24 @@ let table = new Tabulator("#data-table", {
         row.getElement().style.backgroundColor = "#85C1E9";
         $('#buttonqth').removeAttr('disabled');
         $('#buttonmap').removeAttr('disabled');
+
+        // retrieve our rows info and display it
+        let info = "<h5>" + row.getData().info + "</h5>";
+        $("#additional-info").html(info);      
+        
+        let selectedRows = table.getSelectedRows();
+        let rowCount = selectedRows.length;
+        
+        let cs = row.getData().callsign;
+        
+        if(rowCount > 1) // only allow one row selected (for now)
+        {
+            for(i = 0; i < rowCount; i++)
+            {
+                if(selectedRows[i].getData().callsign != cs)
+                    table.deselectRow(selectedRows[i]);
+            }
+        }         
     },
     scrollVertical:function(top){
         //console.log(top);
@@ -287,7 +316,8 @@ let table = new Tabulator("#data-table", {
     rowDeselected:function(row){
         if(row.getData().status == "HB")
         {
-            row.getElement().style.backgroundColor = "#FFA07A";
+            //row.getElement().style.backgroundColor = "#FFA07A";
+            row.getElement().style.backgroundColor = "#FFFFFF";
         }
         else if(row.getData().status == "QSO")
         {
@@ -297,12 +327,25 @@ let table = new Tabulator("#data-table", {
         {
             row.getElement().style.backgroundColor = "#66FFB2";
         }
+        else if(row.getData().status == "***") // this is for the directed callsign in JS8Call
+        {
+            row.getElement().style.backgroundColor = "#FFA07A";
+        }
         else
         {
             row.getElement().style.backgroundColor = "#FFFFFF";
         }
-        $('#buttonqth').attr('disabled', 'disabled');
-        $('#buttonmap').attr('disabled', 'disabled');
+        
+        // check if still selected rows and if not disable buttons
+        let selectedRows = table.getSelectedRows();
+        let rowCount = selectedRows.length;
+        
+        if(rowCount == 0)
+        {
+            $('#buttonqth').attr('disabled', 'disabled');
+            $('#buttonmap').attr('disabled', 'disabled');
+             $("#additional-info").html("<h5>(Select a Call Sign to display additional info if any)</h5>");
+        }
     },
     rowContextMenu:[
         {
@@ -330,8 +373,8 @@ let table = new Tabulator("#data-table", {
  	layout:"fitColumns", //fit columns to width of table (optional)
     rowFormatter:function(row){
         if(row.getData().status == "HB")
-        {
-            row.getElement().style.backgroundColor = "#FFA07A";
+        {            //row.getElement().style.backgroundColor = "#FFA07A";
+            row.getElement().style.backgroundColor = "#FFFFFF";
         }
         else if(row.getData().status == "QSO")
         {
@@ -340,6 +383,10 @@ let table = new Tabulator("#data-table", {
         else if(row.getData().status == "CQ")
         {
             row.getElement().style.backgroundColor = "#66FFB2";
+        }
+        else if(row.getData().status == "***") // this is for the directed callsign in JS8Call
+        {
+            row.getElement().style.backgroundColor = "#FFA07A";
         }
         else
         {
@@ -354,7 +401,8 @@ let table = new Tabulator("#data-table", {
 	 	{title:"RNG", field:"rng", width:75, formatter:formatRngCell, sorter:"number"},
 	 	{title:"BRG", field:"brg", width:75, sorter:"number"},
 	 	{title:"SNR", field:"snr", width:75, sorter:"number"},
-	 	{title:"Status", field:"status", width:110, headerMenu:statusHeaderMenu}
+	 	{title:"Status", field:"status", width:110, headerMenu:statusHeaderMenu},
+	 	{title:"Info", field:"info", visible:false}
  	],
  	initialSort:[
         {column:"utc", dir:"desc"} //sort by this first

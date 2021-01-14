@@ -413,6 +413,18 @@ async function updateRngBrgFromHamqthGrid(stationgrid, callsign)
     }
     else
         console.log('no grid from hamqth.com or maybe no internet');            
+
+    let csInfo = {"callsign":callsign, "info":"(none)"};
+    
+    if(grid.length != 0) 
+    {       
+        // just put the grid in the info for now
+        let info = "grid: " + grid[0];
+        
+        csInfo = {"callsign":callsign, "info":info};
+    }          
+    
+    win.webContents.send('csinfo', csInfo); 
 }
 
 async function updateRngBrgFromQrzcqGrid(stationgrid, callsign)
@@ -443,7 +455,7 @@ async function updateRngBrgFromQrzcqGrid(stationgrid, callsign)
         win.webContents.send('rngbrgcs', rngBrgCs);
     }
     else
-        console.log('no grid from qrzcq.com or maybe no internet');            
+        console.log('no grid from qrzcq.com or maybe no internet');    
 }
 
 //updateRngBrgFromHamqthGrid('fn84dp', 'm7gmt');
