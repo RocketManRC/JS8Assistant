@@ -130,6 +130,10 @@ ipcRenderer.on('activity', (event, message) =>
                     table.addRow({callsign:cs, offset: offset, snr:snr, timedrift:timedrift, utc:utc, status:status}, true); // add row to top
                     table.setSort(table.getSorters()[0].field, table.getSorters()[0].dir); // sort the table by whatever column and direction is selected
                  }
+                 
+                if(statusHeaderMenuLabel == "Show HB")
+                    table.setFilter("status", "!=", "HB");
+
             }
 	    }
     }
@@ -344,7 +348,7 @@ let table = new Tabulator("#data-table", {
         {
             $('#buttonqth').attr('disabled', 'disabled');
             $('#buttonmap').attr('disabled', 'disabled');
-             $("#additional-info").html("<h5>(Select a Call Sign to display additional info if any)</h5>");
+            $("#additional-info").html("<h5>(Select a Call Sign to display additional info if any)</h5>");
         }
     },
     rowContextMenu:[
