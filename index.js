@@ -211,6 +211,29 @@ let tabledata = [
  	//{id:1, callsign:"AA9BCD", offset: "1510", snr:"-09", timedrift:"150", utc:""}
  ];
  
+let statusHeaderMenuLabel = "Hide HB";
+ 
+let statusHeaderMenu = [
+    {
+        label:function(component){
+            return statusHeaderMenuLabel; 
+        },
+        action:function(e, column){ // this is so cool, you can modify the menu item by using a function
+            if(statusHeaderMenuLabel == "Hide HB")
+            {
+                table.setFilter("status", "!=", "HB");
+                statusHeaderMenuLabel = "Show HB";
+            }
+            else
+            {
+                table.removeFilter("status", "!=", "HB");
+                statusHeaderMenuLabel = "Hide HB";
+            }
+        }
+    },
+];
+
+ 
 //create Tabulator on DOM element with id "data-table"
 let table = new Tabulator("#data-table", {
  	height:367, // set height of table (in CSS or here), this enables the Virtual DOM and improves render speed dramatically (can be any valid css height value)
@@ -294,7 +317,7 @@ let table = new Tabulator("#data-table", {
 	 	{title:"RNG", field:"rng", width:75, sorter:"number"},
 	 	{title:"BRG", field:"brg", width:75, sorter:"number"},
 	 	{title:"SNR", field:"snr", width:75, sorter:"number"},
-	 	{title:"Status", field:"status", width:85}
+	 	{title:"Status", field:"status", width:110, headerMenu:statusHeaderMenu}
  	],
  	initialSort:[
         {column:"utc", dir:"desc"} //sort by this first
