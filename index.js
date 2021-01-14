@@ -161,16 +161,36 @@ $("form button").click(function(ev){
     
     if($(this).attr("value")=="buttonqth")
     {
-        $("#additional-info").html("<h5>This is a test</h5>");
+        var selectedRows = table.getSelectedRows();
+        if(selectedRows.length == 1)
+        {
+            let rowData = selectedRows[0].getData();
+            let callsign = rowData.callsign;
+            shell.openExternal('https://www.qrz.com/db/?callsign='+callsign);
+        }
+        else
+            console.log("no rows selected");
+
+        //$("#additional-info").html("<h5>This is a test</h5>");
         //ipcRenderer.send("displayqth", sent);
     }
     else if($(this).attr("value")=="buttonmap")
     {
-        ipcRenderer.send("displaymap", sent);
+        var selectedRows = table.getSelectedRows();
+        if(selectedRows.length == 1)
+        {
+            let rowData = selectedRows[0].getData();
+            let callsign = rowData.callsign;
+            shell.openExternal('https://www.pskreporter.info/pskmap.html?preset&callsign='+callsign+'&mode=JS8&timerange=3600&distunit=' + distanceUnit + '&hideunrec=1&blankifnone=1');
+        }
+        else
+            console.log("no rows selected");
+            
+        //ipcRenderer.send("displaymap", sent);
     }
     else if($(this).attr("value")=="buttonhistory")
     {
-        ipcRenderer.send("displayhistory", sent);
+        //ipcRenderer.send("displayhistory", sent);
     }
 });
 
@@ -250,9 +270,11 @@ function formatRngCell(cell, formatterParams, onRendered)
 //create Tabulator on DOM element with id "data-table"
 let table = new Tabulator("#data-table", {
  	height:367, // set height of table (in CSS or here), this enables the Virtual DOM and improves render speed dramatically (can be any valid css height value)
-    //selectable:true, *** row selection is disabled for now
+    selectable:true,
     rowSelected:function(row){
         row.getElement().style.backgroundColor = "#85C1E9";
+        $('#buttonqth').removeAttr('disabled');
+        $('#buttonmap').removeAttr('disabled');
     },
     scrollVertical:function(top){
         //console.log(top);
@@ -279,6 +301,8 @@ let table = new Tabulator("#data-table", {
         {
             row.getElement().style.backgroundColor = "#FFFFFF";
         }
+        $('#buttonqth').attr('disabled', 'disabled');
+        $('#buttonmap').attr('disabled', 'disabled');
     },
     rowContextMenu:[
         {
