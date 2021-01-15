@@ -1,6 +1,6 @@
 {
   "name": "JS8Assistant",
-  "version": "0.1.0",
+  "version": "0.17.1",
   "description": "An application to assist with using JS8Call",
   "main": "main.js",
   "scripts": {
@@ -9,12 +9,13 @@
   "author": "RocketManRC",
   "license": "MIT",
   "dependencies": {
-    "@trippnology/lib-js8call": "^0.16.1",
+    "@trippnology/lib-js8call": "^0.17.1",
     "bootstrap": "4.5.3",
     "electron-first-run": "^3.0.0",
     "jquery": "^3.5.1",
     "moment": "^2.29.1",
     "node-fetch": "^2.6.1",
+    "popper.js": "^1.16.1",
     "tabulator-tables": "^4.9.3"
   },
   "devDependencies": {
