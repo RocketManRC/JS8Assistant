@@ -139,7 +139,7 @@ ipcRenderer.on('activity', (event, message) =>
     }
 });
 
-ipcRenderer.on('rngbrgcs', (event, message) => 
+ipcRenderer.on('rngbrgcsgrid', (event, message) => 
 {
     //console.log(message);
     
@@ -148,7 +148,7 @@ ipcRenderer.on('rngbrgcs', (event, message) =>
     let rows = table.searchRows("callsign", "=", cs);
     
     if(rows[0]) // there should only be one entry for this call sign or something is wrong!
-        rows[0].update({rng: message.rng, brg:message.brg});
+        rows[0].update({rng: message.rng, brg:message.brg, grid:message.grid});
 });
 
 ipcRenderer.on('csinfo', (event, message) => 
@@ -291,9 +291,18 @@ let table = new Tabulator("#data-table", {
         $('#buttonqth').removeAttr('disabled');
         $('#buttonmap').removeAttr('disabled');
 
-        // retrieve our rows info and display it
-        let info = "<h5>" + row.getData().info + "</h5>";
-        $("#additional-info").html(info);      
+        // retrieve our rows grid and info and display it
+        let info = row.getData().info;
+        let grid = row.getData().grid;
+        let infoText = "(none)";
+
+        if(grid)
+            infoText = "<b>Grid:</b> " + grid;
+
+        if(info)
+            infoText += "   " + info;
+
+        $("#additional-info").html(infoText);      
         
         let selectedRows = table.getSelectedRows();
         let rowCount = selectedRows.length;
@@ -348,7 +357,7 @@ let table = new Tabulator("#data-table", {
         {
             $('#buttonqth').attr('disabled', 'disabled');
             $('#buttonmap').attr('disabled', 'disabled');
-            $("#additional-info").html("<h5>(Select a Call Sign to display additional info if any)</h5>");
+            $("#additional-info").html("(Select a Call Sign to display additional info if any)");
         }
     },
     rowContextMenu:[
@@ -406,7 +415,8 @@ let table = new Tabulator("#data-table", {
 	 	{title:"BRG", field:"brg", width:75, sorter:"number"},
 	 	{title:"SNR", field:"snr", width:75, sorter:"number"},
 	 	{title:"Status", field:"status", width:110, headerMenu:statusHeaderMenu},
-	 	{title:"Info", field:"info", visible:false}
+	 	{title:"Info", field:"info", visible:false},
+	 	{title:"Grid", field:"grid", visible:false}
  	],
  	initialSort:[
         {column:"utc", dir:"desc"} //sort by this first

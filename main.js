@@ -93,7 +93,7 @@ function createWindow()
       const isFirstRun = firstRun()   
       
       const configPath = path.join(app.getPath('userData'), 'FirstRun', 'electron-app-first-run');
-      console.log(configPath);
+      //console.log(configPath);
 
        
       if(isFirstRun)
@@ -130,19 +130,19 @@ app.on('activate', () => {
 // listener for buttonqth
 ipcMain.on("displayqth",(e, data)=>{
   //sendToJS8Call(data);
-  console.log("displayqth")
+  //console.log("displayqth")
 });
 
 // listener for buttonmap
 ipcMain.on("displaymap",(e, data)=>{
   //sendToJS8Call(data);
-  console.log("displaymap")
+  //console.log("displaymap")
 });
 
 // listener for buttonhistory
 ipcMain.on("displayhistory",(e, data)=>{
   //sendToJS8Call(data);
-  console.log("displayhistory")
+  //console.log("displayhistory")
 });
 
 
@@ -297,10 +297,10 @@ function processPacket(packet)
         if(cs != "" && alphanumeric(cs) && callsigns.indexOf(cs) < 0) 
         {
             // sending range and bearing to renderer
-            updateRngBrgFromHamqthGrid(js8.station.grid, cs);
-            updateRngBrgFromQrzcqGrid(js8.station.grid, cs);
+            updateRngBrgGridInfoFromHamqthGrid(js8.station.grid, cs);
+            updateRngBrgGridFromQrzcqGrid(js8.station.grid, cs);
             callsigns.push(cs);
-            console.log("updated rngbrg for " + cs);
+            //console.log("updated rngbrggrid for " + cs);
         }		
 	}
 }
@@ -351,17 +351,19 @@ async function hamqthLatLngFromCallsign(stationgrid, callsign)
 }
 
 
-async function hamqthGridFromCallsign(callsign)
+async function hamqthGridInfoFromCallsign(callsign)
 {
     const fetch = require("node-fetch");
     const url = "https://www.hamqth.com/" + callsign;
     
     let grid;
+    let info;
 
     try 
     {
         const response = await fetch(url);
         const html = await response.text();
+
         if(html.indexOf('https://aprs.fi/#!addr=') > 0)
         {
             let parts = html.split('https://aprs.fi/#!addr=');
@@ -373,29 +375,80 @@ async function hamqthGridFromCallsign(callsign)
         }
         else
             grid = [];
+
+        let name = " ";
+        let qth = " ";
+        let country = " ";
+        let state = " ";
+
+        if(html.indexOf('>Name:</td><td>') > 0)
+        {
+            let parts = html.split('>Name:</td><td>');
+            //console.log(parts);
+            if(parts.length != 0)
+                name = parts[1].split('</td>', 1);     
+         }
+
+        if(html.indexOf('>Name:</td><td>') > 0)
+        {
+            let parts = html.split('>QTH:</td><td>');
+            //console.log(parts);
+            if(parts.length != 0)
+                qth = parts[1].split('</td>', 1);     
+        }
+ 
+        if(html.indexOf('>Name:</td><td>') > 0)
+        {
+            let parts = html.split('>Country:</td><td>');
+            //console.log(parts);
+            if(parts.length != 0)
+                country = parts[1].split('</td>', 1);     
+        }
+ 
+        if(html.indexOf('>State:</td><td>') > 0)
+        {
+            let parts = html.split('>State:</td><td>');
+            //console.log(parts);
+            if(parts.length != 0)
+                state = parts[1].split('</td>', 1);     
+        }
+        
+        if(name != " ")
+            info = "&nbsp&nbsp&nbsp<b>Name:</b> " + name + "&nbsp&nbsp&nbsp<b>QTH:</b> " + qth + "&nbsp&nbsp&nbsp<b>Country:</b> " + 
+                country + "&nbsp&nbsp&nbsp<b>State:</b> " + state;
+        else
+            info = " ";
     } 
     catch(error) 
     {
         console.log(error);
     }
+
+    result = {"grid":grid,"info":info};
+
+    //console.log(result);
     
-    return grid;
+    return result;
 }
 
 //console.log(hamqthGridFromCallsign('va1uav'));
 
-async function updateRngBrgFromHamqthGrid(stationgrid, callsign)
+async function updateRngBrgGridInfoFromHamqthGrid(stationgrid, callsign)
 {
     let Maidenhead = require('maidenhead'); // this is installed by lib-js8call
     
     let cs1 = new Maidenhead();
     cs1.locator = stationgrid;
     
-    let grid = await hamqthGridFromCallsign(callsign);
+    let gridInfo = await hamqthGridInfoFromCallsign(callsign);
+
+    let grid = gridInfo.grid;
+    let info = gridInfo.info;
     
-    //console.log(grid);
+    //console.log(gridInfo);
+    //console.log(info);
     
-    if(grid.length != 0)    
+    if(grid && grid.length != 0)    
     {
         //console.log(grid[0]);
         
@@ -405,29 +458,25 @@ async function updateRngBrgFromHamqthGrid(stationgrid, callsign)
         let rng = Math.round(cs1.distanceTo(cs2, 'm')/1000);
         let brg = cs1.bearingTo(cs2);
     
-        let rngBrgCs = {"rng":rng, "brg":brg, "cs": callsign};
+        let rngBrgCsGrid = {"rng":rng, "brg":brg, "cs":callsign, "grid":grid};
     
-        console.log(rngBrgCs);
+        //console.log(rngBrgCsGrid);
                            
-        win.webContents.send('rngbrgcs', rngBrgCs);
+        win.webContents.send('rngbrgcsgrid', rngBrgCsGrid);
     }
     else
-        console.log('no grid from hamqth.com or maybe no internet');            
-
-    let csInfo = {"callsign":callsign, "info":"(none)"};
-    
-    if(grid.length != 0) 
-    {       
-        // just put the grid in the info for now
-        let info = "grid: " + grid[0];
+        console.log('no grid for ' + callsign + ' from hamqth.com or maybe no internet');     
         
-        csInfo = {"callsign":callsign, "info":info};
-    }          
-    
-    win.webContents.send('csinfo', csInfo); 
+    if(info != "")
+    {
+        let csinfo = {"callsign":callsign, "info":info};
+        //console.log("csinfo: " + csinfo);
+
+        win.webContents.send('csinfo', csinfo);
+    }
 }
 
-async function updateRngBrgFromQrzcqGrid(stationgrid, callsign)
+async function updateRngBrgGridFromQrzcqGrid(stationgrid, callsign)
 {
     let Maidenhead = require('maidenhead'); // this is installed by lib-js8call
     
@@ -438,7 +487,7 @@ async function updateRngBrgFromQrzcqGrid(stationgrid, callsign)
     
     //console.log(grid);
     
-    if(grid.length != 0)    
+    if(grid && grid.length != 0)    
     {
         //console.log(grid[0]);
         
@@ -448,14 +497,14 @@ async function updateRngBrgFromQrzcqGrid(stationgrid, callsign)
         let rng = Math.round(cs1.distanceTo(cs2, 'm')/1000);
         let brg = cs1.bearingTo(cs2);
     
-        let rngBrgCs = {"rng":rng, "brg":brg, "cs": callsign};
+        let rngBrgCsGrid = {"rng":rng, "brg":brg, "cs":callsign, "grid":grid};
     
         //console.log(rngBrgCs);
                            
-        win.webContents.send('rngbrgcs', rngBrgCs);
+        win.webContents.send('rngbrgcsgrid', rngBrgCsGrid);
     }
     else
-        console.log('no grid from qrzcq.com or maybe no internet');    
+        console.log('no grid for ' + callsign + ' from qrzcq.com or maybe no internet');    
 }
 
 //updateRngBrgFromHamqthGrid('fn84dp', 'm7gmt');
@@ -478,7 +527,7 @@ async function qrzcqGridFromCallsign(callsign)
             if(parts.length != 0)
             {
                 grid = parts[1].split('<', 1);  
-                console.log(grid);   
+                //console.log(grid);   
             }
             else
                 grid = [];   

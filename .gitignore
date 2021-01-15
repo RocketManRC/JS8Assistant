@@ -1,5 +1,6 @@
 node_modules/
 testdata/
+.vscode/
 .DS_Store
 .DS_Store?
 .gitattributes
