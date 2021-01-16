@@ -9,7 +9,7 @@
   "author": "RocketManRC",
   "license": "MIT",
   "dependencies": {
-    "@trippnology/lib-js8call": "^0.17.2",
+    "@trippnology/lib-js8call": "^0.17.1",
     "bootstrap": "4.5.3",
     "electron-first-run": "^3.0.0",
     "jquery": "^3.5.1",
