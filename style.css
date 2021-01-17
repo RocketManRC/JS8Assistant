@@ -6,3 +6,8 @@ body{
 	/* Disable the default finger cursor for now */
 	pointer-events: none;
 }
+
+.scroll {
+    max-height: 300px;
+    overflow-y: auto;
+}

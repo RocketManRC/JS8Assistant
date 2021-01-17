@@ -16,6 +16,7 @@
     "moment": "^2.29.1",
     "node-fetch": "^2.6.1",
     "popper.js": "^1.16.1",
+    "showdown": "^1.9.1",
     "tabulator-tables": "^4.9.3"
   },
   "devDependencies": {

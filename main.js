@@ -113,7 +113,40 @@ function createWindow()
   });
 }
 
-app.whenReady().then(createWindow);
+function createQsoHistoryWindow() 
+{
+  // Create the browser window.
+  winQsoHistory = new BrowserWindow({
+    width: 747,
+    height: winHeight + 100,
+    webPreferences: {
+      nodeIntegration: true
+    }
+  });
+
+  // and load the index.html of the app.
+  winQsoHistory.loadURL(url.format ({
+    pathname: path.join(__dirname, 'indexQsoHistory.html'),
+    protocol: 'file:',
+    slashes: true
+  }));
+  
+  // Open the DevTools for testing if needed
+  winQsoHistory.webContents.openDevTools();
+  
+  winQsoHistory.webContents.on('did-finish-load', () => {
+      winQsoHistory.setTitle("QSO History");
+  });
+}
+
+function createWindows()
+{
+    createWindow();
+    createQsoHistoryWindow(); // for testing, move to QSO History button event handler
+}
+
+//app.whenReady().then(createWindow);
+app.whenReady().then(createWindows); // for feature testing
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
