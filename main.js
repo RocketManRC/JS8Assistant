@@ -132,7 +132,7 @@ function createQsoHistoryWindow()
   }));
   
   // Open the DevTools for testing if needed
-  winQsoHistory.webContents.openDevTools();
+  // winQsoHistory.webContents.openDevTools();
   
   winQsoHistory.webContents.on('did-finish-load', () => {
       winQsoHistory.setTitle("QSO History");
@@ -217,7 +217,8 @@ js8.on('tcp.connected', (connection) => {
     js8.station.getGrid().then((grid) => {
         console.log('station grid');
         console.log(grid);        
-        console.log(js8.station.grid);
+        //console.log(js8.station.grid);
+        console.log();
    });
     
     js8.mode.getSpeed().then((mode) => {
@@ -239,17 +240,56 @@ js8.on('tcp-error', (e) => {
     console.log();
 });
 
-js8.on('rig.freq', (packet) => {
-	console.log(
-		'[Rig] Frequency has been changed to %s (%s). Offset: %s',
-		packet.params.DIAL,
-		packet.params.BAND,
-		packet.params.OFFSET
-	);
+
+// START OF CODE FOR QSO RECORDING
+
+// The folowing code handles recording a QSO.
+// If there is a packet directed to me and there is not
+// a qso recoding in progress one is started. At that point
+// if there was a message sent by me to that callsign then 
+// add it to the start of the buffer. The buffer will be saved to a file
+// and then closed when a LOG.QSO packet if receieved, a directed message
+// from another callsign appears or the program is closed (which ever happens first).
+// That is probably not a perfect approach but probably good enough to get started...
+
+let QsoRecordBuffer = []; // Record the QSO in a text array
+let QsoRecordCallsign = ""; // This is who we are talking to
+
+js8.on('rx.directed.to_me', (packet) => {
+    console.log(packet.value);
+    console.log();
+
+    if(QsoRecordBuffer.length == 0)
+    {
+        // We are here if we are starting a new recording
+        if(lastTxText != "")
+        {
+            QsoRecordBuffer.push(lastTxText);
+            lastTxText = ""; // we've saved it so delete it
+        }
+
+        QsoRecordBuffer.push(packet.value);
+
+        QsoRecordCallsign = packet.value.substring(0, packet.value.indexOf(":"));	    
+    }
 });
 
+let lastTxText = "";
+
 function pttSuccessCallback(result) {
-  console.log(result);
+    if(result != "")
+        lastTxText = result;
+    else
+    {
+        console.log(lastTxText); // this was the final text in the tx buffer so we capture any type ahead
+        console.log();
+
+        if(QsoRecordBuffer.length != 0)
+        {
+            QsoRecordBuffer.push(lastTxText);
+            lastTxText = ""; // we've saved it so delete it
+        }
+    }
 }
 
 function pttFailureCallback(error) {
@@ -257,9 +297,46 @@ function pttFailureCallback(error) {
 }
 
 js8.on('rig.ptt', (packet) => {
-	console.log('[Rig] PTT is %s', packet.value);
+	//console.log('[Rig] PTT is %s', packet.value);
 	js8.tx.getText().then(pttSuccessCallback, pttFailureCallback);
 });
+
+js8.on('packet', (packet) => {
+    // Check for the LOG.QSO message which happens when a log entry has been saved
+    if(packet.type == "LOG.QSO")
+    {
+        console.log(packet.value);
+        console.log();
+        console.log(packet.params);
+        console.log();
+        console.log("We are talking to: ");
+        console.log(QsoRecordCallsign);
+        console.log("Here is our record buffer to save: ");
+        console.log(QsoRecordBuffer);
+
+        // Save the file in format ./qsodata/VA1UAV/qd1610822723539.md (for example)
+        const fs = require('fs');
+        let dir = './qsodata';
+        if(!fs.existsSync(dir)){
+            fs.mkdirSync(dir);
+        }
+        dir = './qsodata/' + QsoRecordCallsign;
+        if(!fs.existsSync(dir)){
+            fs.mkdirSync(dir);
+        }
+
+        fs.writeFile(dir + '/qd' + Date.now() + '.md', QsoRecordBuffer, function(err) {
+            // If an error occurred, show it and return
+            if(err) return console.error(err);
+          });      
+          
+        QsoRecordBuffer = [];
+        QsoRecordCallsign = "";
+    }
+});
+
+// END OF CODE FOR QSO RECORDING
+
 
 js8.on('rig.ptt.on', (packet) => {
     win.webContents.send('rig.ptt.on');
@@ -269,17 +346,8 @@ js8.on('rig.ptt.off', (packet) => {
     win.webContents.send('rig.ptt.off');
 });
 
-js8.on('rx.to_me', (packet) => {
-	console.log('[Message to me] %s', packet.value);
-});
-
 js8.on('station.callsign', (packet) => {
 	console.log('Station Callsign: %s', packet.value);
-});
-
-js8.on('packet', (packet) => {
-    // Do your custom stuff
-    //console.log(packet);
 });
 
 // Function to check letters and numbers for callsign validation
@@ -345,12 +413,6 @@ js8.on('rx.activity', (packet) => {
 js8.on('rx.directed', (packet) => {
     //processPacket(packet);
 });
-
-//js8.on('rx.directed', (packet) => {
-    // Do your custom stuff
-    //console.log(packet);
-    //win.webContents.send('activity', packet);
-//});
 
 // JS8Call requires a grid square of the station in setup so we should always have that.
 // If an activity packet coming in is CQ then there will be a grid square as well so we use that.
@@ -486,19 +548,27 @@ async function updateRngBrgGridInfoFromHamqthGrid(stationgrid, callsign)
         //console.log(grid[0]);
         
         let cs2 = new Maidenhead();
-        cs2.locator = grid[0];
 
-        let rng = Math.round(cs1.distanceTo(cs2, 'm')/1000);
-        let brg = cs1.bearingTo(cs2);
-    
-        let rngBrgCsGrid = {"rng":rng, "brg":brg, "cs":callsign, "grid":grid};
-    
-        //console.log(rngBrgCsGrid);
-                           
-        win.webContents.send('rngbrgcsgrid', rngBrgCsGrid);
+        try
+        {
+            cs2.locator = grid[0];
+
+            let rng = Math.round(cs1.distanceTo(cs2, 'm')/1000);
+            let brg = cs1.bearingTo(cs2);
+        
+            let rngBrgCsGrid = {"rng":rng, "brg":brg, "cs":callsign, "grid":grid};
+        
+            //console.log(rngBrgCsGrid);
+                            
+            win.webContents.send('rngbrgcsgrid', rngBrgCsGrid);
+        }
+        catch
+        {
+            // silence
+        }
     }
-    else
-        console.log('no grid for ' + callsign + ' from hamqth.com or maybe no internet');     
+//    else
+//        console.log('no grid for ' + callsign + ' from hamqth.com or maybe no internet');     
         
     if(info != "")
     {
@@ -525,6 +595,9 @@ async function updateRngBrgGridFromQrzcqGrid(stationgrid, callsign)
         //console.log(grid[0]);
         
         let cs2 = new Maidenhead();
+
+        try
+        {
         cs2.locator = grid[0];
 
         let rng = Math.round(cs1.distanceTo(cs2, 'm')/1000);
@@ -535,9 +608,14 @@ async function updateRngBrgGridFromQrzcqGrid(stationgrid, callsign)
         //console.log(rngBrgCs);
                            
         win.webContents.send('rngbrgcsgrid', rngBrgCsGrid);
+        }
+        catch
+        {
+            // silence...
+        }
     }
-    else
-        console.log('no grid for ' + callsign + ' from qrzcq.com or maybe no internet');    
+//    else
+//        console.log('no grid for ' + callsign + ' from qrzcq.com or maybe no internet');    
 }
 
 //updateRngBrgFromHamqthGrid('fn84dp', 'm7gmt');
