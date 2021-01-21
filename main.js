@@ -1,7 +1,7 @@
 /*
 MIT License
 
-Copyright (c) 2020 Rick MacDonald
+Copyright (c) 2021 Rick MacDonald
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -255,23 +255,38 @@ js8.on('tcp-error', (e) => {
 let QsoRecordBuffer = []; // Record the QSO in a text array
 let QsoRecordCallsign = ""; // This is who we are talking to
 
+function markdownText(txt)
+{
+    let parts = txt.split(':');
+    let res = "";
+
+    if(parts.length == 2) // just check to make sure the input is proper format, i.e. 'CALLSIGN: Rest of message...'
+    {
+        if(parts[0] == js8.station.callsign)
+        {
+            let me = parts[0];
+            let msg = parts[1];
+            res = '<span style="color:green">' + '\n**' + me + ':**' + msg + '\n</span>\n\n'; // simple markdown + html annotation
+        }
+        else // it could be a reply or a directed message "to me" but without my callsign (??)
+        {
+            let cs = parts[0];
+            let msg = parts[1];
+            QsoRecordCallsign = cs;
+            res = '<span style="color:blue">' + '\n**' + cs + ':**' + msg + '\n</span>\n\n'; // simple markdown + html annotation
+        }
+    }
+
+    return res;
+}
+
 js8.on('rx.directed.to_me', (packet) => {
     console.log(packet.value);
     console.log();
 
-    if(QsoRecordBuffer.length == 0)
-    {
-        // We are here if we are starting a new recording
-        if(lastTxText != "")
-        {
-            QsoRecordBuffer.push(lastTxText);
-            lastTxText = ""; // we've saved it so delete it
-        }
+    QsoRecordBuffer.push(markdownText(packet.value));
 
-        QsoRecordBuffer.push(packet.value);
-
-        QsoRecordCallsign = packet.value.substring(0, packet.value.indexOf(":"));	    
-    }
+    QsoRecordCallsign = packet.value.substring(0, packet.value.indexOf(":"));	    
 });
 
 let lastTxText = "";
@@ -281,12 +296,12 @@ function pttSuccessCallback(result) {
         lastTxText = result;
     else
     {
-        console.log(lastTxText); // this was the final text in the tx buffer so we capture any type ahead
-        console.log();
+        //console.log(lastTxText); // this was the final text in the tx buffer so we capture any type ahead
+        //console.log();
 
         if(QsoRecordBuffer.length != 0)
         {
-            QsoRecordBuffer.push(lastTxText);
+            QsoRecordBuffer.push(markdownText(lastTxText));
             lastTxText = ""; // we've saved it so delete it
         }
     }
@@ -305,6 +320,12 @@ js8.on('packet', (packet) => {
     // Check for the LOG.QSO message which happens when a log entry has been saved
     if(packet.type == "LOG.QSO")
     {
+        if(lastTxText != "")
+        {
+            QsoRecordBuffer.push(markdownText(lastTxText));
+            lastTxText = ""; // we've saved it so delete it
+        }
+
         console.log(packet.value);
         console.log();
         console.log(packet.params);
@@ -325,11 +346,18 @@ js8.on('packet', (packet) => {
             fs.mkdirSync(dir);
         }
 
-        fs.writeFile(dir + '/qd' + Date.now() + '.md', QsoRecordBuffer, function(err) {
-            // If an error occurred, show it and return
-            if(err) return console.error(err);
-          });      
-          
+//        fs.writeFile(dir + '/qd' + Date.now() + '.md', QsoRecordBuffer, function(err) {
+//            // If an error occurred, show it and return
+//            if(err) return console.error(err);
+//          });      
+
+        var qsofile = fs.createWriteStream(dir + '/qd' + Date.now() + '.md');
+
+        for(i = 0; i < QsoRecordBuffer.length; i++)
+            qsofile.write(QsoRecordBuffer[i]); 
+
+        qsofile.end();
+         
         QsoRecordBuffer = [];
         QsoRecordCallsign = "";
     }
