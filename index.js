@@ -95,47 +95,35 @@ ipcRenderer.on('activity', (event, message) =>
 	    
 	    let rows = table.searchRows("callsign", "=", cs);
         
-	    if(rows[0]) // there should only be one entry for this call sign or something is wrong!
-	    {		
-            rows[0].update({offset: offset, snr:snr, timedrift:timedrift, utc:utc});
+        // In the logic following, checking for alphanumeric is not perfect however 
+        // there is no real indication in JS8Call that there is a call sign in a packet...
+        if(cs != "" && alphanumeric(cs)) 
+        {
+            let stats;
             
-            if(scrolling == 0)
-            {
-                //console.log("sorting on update row while not scrolled");
-                table.setSort(table.getSorters()[0].field, table.getSorters()[0].dir); // sort the table by whatever column and direction is selected
+            if(value.indexOf("HEARTBEAT") >= 0)
+                status = "HB";
+            else if(value.indexOf("CQ") >= 0)
+                status = "CQ";
+            else
+                status = "QSO";
+            
+            if(rows[0]) // note that there should only be one entry for this call sign or something is wrong (but not checking)!
+            {		
+                rows[0].update({offset: offset, snr:snr, timedrift:timedrift, utc:utc, status:status});
             }
-	    }
-	    else
-	    {     
-	        // In the logic following, checking for alphanumeric is not perfect however 
-            // there is no real indication in JS8Call that there is a call sign in a packet...
-            if(cs != "" && alphanumeric(cs)) 
+            else
             {
-		        let stats;
-		        
-		        if(value.indexOf("HEARTBEAT") >= 0)
-		            status = "HB";
-		        else if(value.indexOf("CQ") >= 0)
-		            status = "CQ";
-		        else
-		            status = "QSO";
-		        
-                if(scrolling != 0)
-                {
-                    //console.log("not sorting on new row while scrolled");
-                    table.addRow({callsign:cs, offset: offset, snr:snr, timedrift:timedrift, utc:utc, status:status}, true); // add row to top
-                 }
-                 else
-                 {
-                    table.addRow({callsign:cs, offset: offset, snr:snr, timedrift:timedrift, utc:utc, status:status}, true); // add row to top
-                    table.setSort(table.getSorters()[0].field, table.getSorters()[0].dir); // sort the table by whatever column and direction is selected
-                 }
-                 
-                if(statusHeaderMenuLabel == "Show HB")
-                    table.setFilter("status", "!=", "HB");
+                table.addRow({callsign:cs, offset: offset, snr:snr, timedrift:timedrift, utc:utc, status:status}, true); // add row to top
+            }
 
-            }
-	    }
+            if(scrolling == 0) // if not scrolled then sort table appropriately
+                table.setSort(table.getSorters()[0].field, table.getSorters()[0].dir); // sort the table by whatever column and direction is selected
+            
+                
+            if(statusHeaderMenuLabel == "Show HB")
+                table.setFilter("status", "!=", "HB");
+        }
     }
 });
 
