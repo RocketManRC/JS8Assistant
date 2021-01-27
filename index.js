@@ -27,6 +27,7 @@ SOFTWARE.
 let $ = jQuery = require('jquery');
 const {ipcRenderer} = require('electron');
 const shell = require('electron').shell;
+const fs = require("fs"); 
 
 var config = require('./config');
 let distanceUnit = config.distanceUnit; // km or miles for PSKReporter and RNG column in table
@@ -172,7 +173,7 @@ $("form button").click(function(ev){
         //$("#additional-info").html("<h5>This is a test</h5>");
         //ipcRenderer.send("displayqth", sent);
     }
-    else if($(this).attr("value")=="buttonmap")
+    else if($(this).attr("value")=="buttonpsk")
     {
         let selectedRows = table.getSelectedRows();
         let rowCount = selectedRows.length;
@@ -184,6 +185,27 @@ $("form button").click(function(ev){
                 let rowData = selectedRows[i].getData();
                 let callsign = rowData.callsign;
                 shell.openExternal('https://www.pskreporter.info/pskmap.html?preset&callsign='+callsign+'&mode=JS8&timerange=3600&distunit=' + distanceUnit + '&hideunrec=1&blankifnone=1');
+                //shell.openExternal('http://www.levinecentral.com/ham/grid_square.php/'+callsign+'?Call='+callsign);
+            }
+        }
+        else
+            console.log("no rows selected");
+            
+        //ipcRenderer.send("displaymap", sent);
+    }
+    else if($(this).attr("value")=="buttonmap")
+    {
+        let selectedRows = table.getSelectedRows();
+        let rowCount = selectedRows.length;
+        
+        if(rowCount >= 1)
+        {
+            for(i = 0; i < rowCount; i++)
+            {
+                let rowData = selectedRows[i].getData();
+                let callsign = rowData.callsign;
+                //shell.openExternal('https://www.pskreporter.info/pskmap.html?preset&callsign='+callsign+'&mode=JS8&timerange=3600&distunit=' + distanceUnit + '&hideunrec=1&blankifnone=1');
+                shell.openExternal('http://www.levinecentral.com/ham/grid_square.php/'+callsign+'?Call='+callsign);
             }
         }
         else
@@ -193,7 +215,15 @@ $("form button").click(function(ev){
     }
     else if($(this).attr("value")=="buttonhistory")
     {
-        //ipcRenderer.send("displayhistory", sent);
+        let selectedRows = table.getSelectedRows();
+        let rowCount = selectedRows.length;
+        if(rowCount == 1)
+        {
+            let rowData = selectedRows[0].getData();
+            let callsign = rowData.callsign;
+            console.log("sending buttonhistory event to main process");
+            ipcRenderer.send("buttonhistory", callsign);
+        }
     }
 });
 
@@ -275,13 +305,17 @@ let table = new Tabulator("#data-table", {
  	height:367, // set height of table (in CSS or here), this enables the Virtual DOM and improves render speed dramatically (can be any valid css height value)
     selectable:true,
     rowSelected:function(row){
-        row.getElement().style.backgroundColor = "#85C1E9";
+        row.getElement().style.backgroundColor = "#85C1E9"; // show the row is selected (blue colour)
+
+        // enable the lookup buttons
         $('#buttonqth').removeAttr('disabled');
+        $('#buttonpsk').removeAttr('disabled');
         $('#buttonmap').removeAttr('disabled');
 
         // retrieve our rows grid and info and display it
         let info = row.getData().info;
         let grid = row.getData().grid;
+        let cs = row.getData().callsign;
         let infoText = "(none)";
 
         if(grid)
@@ -290,13 +324,19 @@ let table = new Tabulator("#data-table", {
         if(info)
             infoText += "   " + info;
 
-        $("#additional-info").html(infoText);      
+        $("#additional-info").html(infoText);   
         
+        // enable the qsohistory button only if we have a data folder for this callsign
+        if(fs.existsSync("./qsodata/" + cs))
+        {
+            //console.log("directory exists for ", cs);
+            $('#buttonhistory').removeAttr('disabled');
+        }
+        
+        // prevent more than one row from being selected
         let selectedRows = table.getSelectedRows();
         let rowCount = selectedRows.length;
-        
-        let cs = row.getData().callsign;
-        
+               
         if(rowCount > 1) // only allow one row selected (for now)
         {
             for(i = 0; i < rowCount; i++)
@@ -317,7 +357,6 @@ let table = new Tabulator("#data-table", {
     rowDeselected:function(row){
         if(row.getData().status == "HB")
         {
-            //row.getElement().style.backgroundColor = "#FFA07A";
             row.getElement().style.backgroundColor = "#FFFFFF";
         }
         else if(row.getData().status == "QSO")
@@ -328,14 +367,14 @@ let table = new Tabulator("#data-table", {
         {
             row.getElement().style.backgroundColor = "#66FFB2";
         }
-        else if(row.getData().status == "***") // this is for the directed callsign in JS8Call
-        {
-            row.getElement().style.backgroundColor = "#FFA07A";
-        }
-        else
-        {
-            row.getElement().style.backgroundColor = "#FFFFFF";
-        }
+        //else if(row.getData().status == "***") // this is for the directed callsign in JS8Call
+        //{
+        //    row.getElement().style.backgroundColor = "#FFA07A";
+        //}
+        //else
+        //{
+        //    row.getElement().style.backgroundColor = "#FFFFFF";
+        //}
         
         // check if still selected rows and if not disable buttons
         let selectedRows = table.getSelectedRows();
@@ -344,7 +383,9 @@ let table = new Tabulator("#data-table", {
         if(rowCount == 0)
         {
             $('#buttonqth').attr('disabled', 'disabled');
+            $('#buttonpsk').attr('disabled', 'disabled');
             $('#buttonmap').attr('disabled', 'disabled');
+            $('#buttonhistory').attr('disabled', 'disabled');
             $("#additional-info").html("(Select a Call Sign to display additional info if any)");
         }
     },
@@ -373,25 +414,43 @@ let table = new Tabulator("#data-table", {
  	data:tabledata, //assign data to table
  	layout:"fitColumns", //fit columns to width of table (optional)
     rowFormatter:function(row){
-        if(row.getData().status == "HB")
-        {            //row.getElement().style.backgroundColor = "#FFA07A";
-            row.getElement().style.backgroundColor = "#FFFFFF";
-        }
-        else if(row.getData().status == "QSO")
+        // First check if our row is selected
+        let selectedRows = table.getSelectedRows();
+        let rowCount = selectedRows.length;
+        let rowSelected = false;
+        
+        if(rowCount >= 1)
         {
-            row.getElement().style.backgroundColor = "#FFFF66";
+            for(i = 0; i < rowCount; i++)
+            {
+                if(row.getData().callsign == selectedRows[i].getData().callsign)
+                    rowSelected = true;
+            }
         }
-        else if(row.getData().status == "CQ")
+
+        if(!rowSelected)
         {
-            row.getElement().style.backgroundColor = "#66FFB2";
-        }
-        else if(row.getData().status == "***") // this is for the directed callsign in JS8Call
-        {
-            row.getElement().style.backgroundColor = "#FFA07A";
-        }
-        else
-        {
-            row.getElement().style.backgroundColor = "#FFFFFF";
+            // only colour the row with status colour if not selected
+            if(row.getData().status == "HB")
+            {            
+                row.getElement().style.backgroundColor = "#FFFFFF";
+            }
+            else if(row.getData().status == "QSO")
+            {
+                row.getElement().style.backgroundColor = "#FFFF66";
+            }
+            else if(row.getData().status == "CQ")
+            {
+                row.getElement().style.backgroundColor = "#66FFB2";
+            }
+            //else if(row.getData().status == "***") // this is for the directed callsign in JS8Call
+            //{
+            //    row.getElement().style.backgroundColor = "#FFA07A";
+            //}
+            //else
+            //{
+            //    row.getElement().style.backgroundColor = "#FFFFFF";
+            //}
         }
     },
  	columns:[ //Define Table Columns

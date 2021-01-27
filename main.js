@@ -27,10 +27,10 @@ SOFTWARE.
 const { app, BrowserWindow, dialog, ipcMain} = require('electron');
 const url = require('url');
 const path = require('path');
-//const callsign = require('callsign/src/node');
-//console.log(callsign.getAmateurRadioDetailedByCallsign('va1uav'));
+const JSONStorage = require('node-localstorage').JSONStorage;
 
-let win;
+let win; // the main application window
+let winQsoHistory; // the window for QSO History
 let winHeight;
 let connected = false; // this is to track the state of the JS8Call API connection
 
@@ -40,7 +40,53 @@ if(process.platform !== 'darwin')
 else
     winHeight = 700;
 
+let storageLocation = app.getPath('userData');
+let nodeStorage = new JSONStorage(storageLocation);
 
+let mainWindowState = {}; 
+let qsoWindowState = {}; 
+
+try 
+{ 
+  mainWindowState = nodeStorage.getItem('mainWindowState'); 
+} 
+catch (err) 
+{ 
+  console.log("problem with mainWindowState: " + err);
+
+  mainWindowState = {};
+}
+
+try 
+{ 
+  qsoWindowState = nodeStorage.getItem('qsoWindowState'); 
+} 
+catch (err) 
+{ 
+  console.log("problem with qsoWindowState: " + err);
+
+  qsoWindowState = {};
+}
+
+if(!mainWindowState)
+{
+    console.log('Create a default mainWindowState');
+
+    mainWindowState = {};
+    mainWindowState.bounds = { width: 847, height: winHeight };
+}
+
+if(!qsoWindowState)
+{
+    console.log('Create a default qsoWindowState');
+
+    qsoWindowState = {};
+    qsoWindowState.bounds = { width: 747, height: winHeight + 100 };
+}
+
+console.log('mainWindowState.bounds: ' + mainWindowState.bounds);
+console.log('qsoWindowState.bounds: ' + qsoWindowState.bounds);
+    
 const dialogOptions = {
     type: 'question',
     buttons: ['OK', 'Cancel'],
@@ -63,14 +109,19 @@ function quitApp()
   
 function createWindow() 
 {
-  // Create the browser window.
-  win = new BrowserWindow({
-    width: 847,
-    height: winHeight,
-    webPreferences: {
-      nodeIntegration: true
-    }
-  });
+    console.log("Storage location: " + storageLocation);
+
+    win = new BrowserWindow({
+        //width: 847,
+        //height: winHeight,
+        width: mainWindowState.bounds.width,
+        height: mainWindowState.bounds.height,
+        x: mainWindowState.bounds.x,
+        y: mainWindowState.bounds.y,
+        webPreferences: {
+        nodeIntegration: true
+        }
+    });
 
   // and load the index.html of the app.
   win.loadURL(url.format ({
@@ -81,6 +132,24 @@ function createWindow()
   
   // Open the DevTools for testing if needed
   // win.webContents.openDevTools();
+
+  const storemainWindowState = function() 
+  { 
+    let ws = {}; 
+    ws.bounds = win.getBounds(); 
+
+    //console.log(ws);
+   
+    nodeStorage.setItem('mainWindowState', ws); 
+  };
+
+  win.on('move', () => {
+    storemainWindowState();
+  });
+  
+  win.on('resize', () => {
+    storemainWindowState();
+  });
   
   win.webContents.on('did-finish-load', () => {
       let title = win.getTitle();
@@ -113,15 +182,56 @@ function createWindow()
   });
 }
 
-function createQsoHistoryWindow() 
+let qsoHistoryWindowCallsign = ""; // we only want one window to open so keep track of it with this callsign variable
+
+function createQsoHistoryWindow(callsign) 
 {
-  // Create the browser window.
+  if(qsoHistoryWindowCallsign != "")
+    return;
+
+  qsoHistoryWindowCallsign = callsign;
+
+  // We have to get the windowstate here too because this window will be opened and closed
+  try 
+  { 
+    qsoWindowState = nodeStorage.getItem('qsoWindowState'); 
+  } 
+  catch (err) 
+  { 
+    console.log("problem with qsoWindowState: " + err);
+  
+    qsoWindowState = {};
+  }
+  
+    // Create the browser window.
   winQsoHistory = new BrowserWindow({
-    width: 747,
-    height: winHeight + 100,
+    //width: 747,
+    //height: winHeight + 100,
+    width: qsoWindowState.bounds.width,
+    height: qsoWindowState.bounds.height,
+    x: qsoWindowState.bounds.x,
+    y: qsoWindowState.bounds.y,
     webPreferences: {
       nodeIntegration: true
     }
+  });
+
+  const storeqsoWindowState = function() 
+  { 
+    let ws = {}; 
+    ws.bounds = winQsoHistory.getBounds(); 
+
+    //console.log(ws);
+   
+    nodeStorage.setItem('qsoWindowState', ws); 
+  };
+
+  winQsoHistory.on('move', () => {
+    storeqsoWindowState();
+  });
+  
+  winQsoHistory.on('resize', () => {
+    storeqsoWindowState();
   });
 
   // and load the index.html of the app.
@@ -136,13 +246,20 @@ function createQsoHistoryWindow()
   
   winQsoHistory.webContents.on('did-finish-load', () => {
       winQsoHistory.setTitle("QSO History");
+      console.log("Sending callsign to history window", callsign);
+      winQsoHistory.webContents.send('callsign', callsign);
+  });
+
+  winQsoHistory.webContents.on('destroyed', () => {
+    console.log('winQsoHistory destroyed');
+    qsoHistoryWindowCallsign = "";
   });
 }
 
 function createWindows()
 {
     createWindow();
-    createQsoHistoryWindow(); // for testing, move to QSO History button event handler
+    //createQsoHistoryWindow(); // for testing, move to QSO History button event handler
 }
 
 //app.whenReady().then(createWindow);
@@ -173,9 +290,9 @@ ipcMain.on("displaymap",(e, data)=>{
 });
 
 // listener for buttonhistory
-ipcMain.on("displayhistory",(e, data)=>{
-  //sendToJS8Call(data);
-  //console.log("displayhistory")
+ipcMain.on("buttonhistory",(e, data)=>{
+    console.log("Open history window for callsign: " + data);
+    createQsoHistoryWindow(data);
 });
 
 
@@ -357,6 +474,8 @@ js8.on('packet', (packet) => {
             qsofile.write(QsoRecordBuffer[i]); 
 
         qsofile.end();
+
+        // also create a file with extension .info to hold the start and stop time
          
         QsoRecordBuffer = [];
         QsoRecordCallsign = "";

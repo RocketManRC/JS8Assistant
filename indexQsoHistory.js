@@ -28,16 +28,30 @@ let $ = jQuery = require('jquery');
 const {ipcRenderer} = require('electron');
 const shell = require('electron').shell;
 const showdown = require('./node_modules/showdown/dist/showdown.min.js');
+const fs = require('fs');
 
-ipcRenderer.on('test', (event, message) => 
+ipcRenderer.on('callsign', (event, message) => 
 {
+    console.log(message);
+    $("#callsign").html('<span style="color:blue"><h4>' + message + '</h4></span>');
 
+    // from the directory with the callsign add rows to the table from the
+    // datafiles within. The timestamp is in the name of the file (end of qso).
+    filenames = fs.readdirSync('./qsodata/' + message); 
+
+    filenames.forEach(file => { 
+        //console.log(file); 
+        let parts = file.split('.');
+        let utc = Number(parts[0].substring(2));
+
+        table.addRow({utcdate:utc, utcendtime:utc, filename:file}, true); // add row to top
+    }); 
 });
 
 let ts = Date.now();
-let tabledata = [
-    {id:1, utcdate:ts, utcstarttime: ts, utcendtime:ts + 1000, elapsedtime:150, filename:'qd1610822723539.md'},
-    {id:2, utcdate:ts - 2000, utcstarttime: ts - 2000, utcendtime:ts - 1000, elapsedtime:150, filename:'qd' + (ts - 2000) + '.md'},
+let tabledata = [ // note: table format is out of date here...
+    //{id:1, utcdate:ts, utcstarttime: ts, utcendtime:ts + 1000, elapsedtime:150, filename:'qd1610822723539.md'},
+    //{id:2, utcdate:ts - 2000, utcstarttime: ts - 2000, utcendtime:ts - 1000, elapsedtime:150, filename:'qd' + (ts - 2000) + '.md'},
 ];
  
 let filenameHeaderMenuLabel = "Save";
@@ -63,7 +77,7 @@ let filenameHeaderMenu = [
 
 function timeFromTimestamp(ts)
 {
-    let unix_timestamp = ts
+    let unix_timestamp = ts;
     let date = new Date(unix_timestamp);
     // Hours part from the timestamp
     let hours = date.getUTCHours();
@@ -74,9 +88,23 @@ function timeFromTimestamp(ts)
     let millis = "00" + date.getUTCMilliseconds();
 
     // Will display time in 10:30:23.123 format
-    let formattedTime = hours + ':' + minutes.substr(-2) + ':' + seconds.substr(-2) + '.' + millis.substr(-3);
+    let formattedTime = hours + ':' + minutes.substr(-2) + ':' + seconds.substr(-2);
     
     return formattedTime;
+}
+
+function dateFromTimestamp(ts)
+{
+    let unix_timestamp = ts;
+    let date = new Date(unix_timestamp);
+    let year = date.getUTCFullYear();
+    let day = "0" + date.getUTCDate();
+    let month = "0" + date.getUTCMonth() + 1;
+
+    // Will display date as 2021/01/22
+    let formattedDate = year + '/' + month.substr(-2) + '/' + day.substr(-2);
+    
+    return formattedDate;
 }
 
 /* Here is the example custom formatter from the Tabulator docs
@@ -95,6 +123,11 @@ function timeFromTimestamp(ts)
 function formatUtcCell(cell, formatterParams, onRendered)
 {
     return timeFromTimestamp(cell.getValue());
+}
+
+function formatUtcDateCell(cell, formatterParams, onRendered)
+{
+    return dateFromTimestamp(cell.getValue());
 }
 
 function formatRngCell(cell, formatterParams, onRendered)
@@ -124,8 +157,6 @@ let table = new Tabulator("#data-table", {
 
         // Here we want to load the .md file run showdown.js on it to convert to html, then paste it into
         // id qso-data using $("#qso-data").html(qsoText)
-        const fs = require('fs');
-
         const qsoText = fs.readFileSync(filepath).toString();
                 
         let converter = new showdown.Converter();
@@ -236,10 +267,10 @@ let table = new Tabulator("#data-table", {
         }
     },
  	columns:[ //Define Table Columns
-        {title:"UTC Date", field:"utcdate", width:125, formatter:formatUtcCell, headerSortStartingDir:"desc"},
-        {title:"UTC Start Time", field:"utcstarttime", width:150, formatter:formatUtcCell, headerSortStartingDir:"desc"},
-        {title:"UTC End Time", field:"utcendtime", width:150, formatter:formatUtcCell, headerSortStartingDir:"desc"},
-        {title:"Elapsed Time (min)", field:"elapsedtime", width:175, sorter:"number"},
+        {title:"UTC Date", field:"utcdate", width:200, formatter:formatUtcDateCell, headerSortStartingDir:"desc"},
+        //{title:"UTC Start Time", field:"utcstarttime", width:150, formatter:formatUtcCell, headerSortStartingDir:"desc"},
+        {title:"UTC End Time", field:"utcendtime", width:200, formatter:formatUtcCell, headerSortStartingDir:"desc"},
+        //{title:"Elapsed Time (min)", field:"elapsedtime", width:175, sorter:"number"},
 	 	{title:"Filename", field:"filename", headerMenu:filenameHeaderMenu}
  	],
  	initialSort:[
