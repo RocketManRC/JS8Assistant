@@ -31,3 +31,4 @@ JS8Call can be found here:
 
 http://files.js8call.com/latest.html
 
+At the moment keeping track of QSO History requires using the JS8Call log function at the end of each QSO.
