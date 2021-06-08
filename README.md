@@ -9,10 +9,10 @@ default web browser on QRZ.com and PSKReporter. There is also the option to show
 grid square on levinecentral.com.
 
 
-![Photo](images/js8assistant1.png)
+![Photo](images/js8assistant1.jpeg)
 
 
-![Photo](images/js8assistant2.png)
+![Photo](images/js8assistant2.jpeg)
 
 
 # History
