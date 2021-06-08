@@ -34,7 +34,7 @@ This is a Node.js application and uses the Electron framework. It uses web techn
 is cross platform. It should run under MacOS, Windows 10 and at least Debian flavours of Linux 
 (including the Raspberry Pi) without any changes.
 
-I am only supplying this in source forma at the moment but all that means is that you 
+I am only supplying this in source form at the moment but all that means is that you 
 have to edit one file and then run the application from the command line after installing it.
 
 Make sure you have a recent long term supported (LTS) version of NodeJS installed. 
@@ -55,9 +55,6 @@ Edit the file config.js and put in your call sign.
 To run the application:
 
 $ npm start
-
-This application should run under MacOS, Windows 10 and at least Debian flavours of Linux 
-without any changes.
 
 There most likely will be an issue that has to be resolved manually after using NPM to 
 install on Linux. See here:
