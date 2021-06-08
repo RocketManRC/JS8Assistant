@@ -62,7 +62,7 @@ install on Linux. See here:
 https://github.com/electron/electron/issues/17972#issuecomment-487369441
 
 # Notes
-This application uses the TCP API of JS8Call version 2.2.0. It is important that the TCP 
+This application uses the TCP API of JS8Call version 2.2.0. It is required that the TCP 
 port number set in JS8Call matches the port number in this application which is currently
 coded to be 2442. The three checkboxes to enable the TCP API should also be checked.
 
@@ -78,12 +78,14 @@ is a utility that will attempt to build QSO history files for you from JS8Call's
 ALL.TXT and js8call.log files. This will only work well if you have not allowed in 
 JS8Call's preferences directed messages without sending call signs.
 
-To run this utility use the command line:
+To run this utility first make sure you have edited config.js to include your call sign.
+
+Then use the command line:
 
 $ node findqsos.js
 
 You should only really run this once to get started but if you need to run it again
-you should back up your qso data folder (it's location is printed out on the terminal
+you should back up your qsodata folder (it's location is printed out on the terminal
 when you run JS8Assistant).
 
 
