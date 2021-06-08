@@ -48,7 +48,8 @@ const net = require('net');
 
 const server = new net.createServer();
 
-server.listen(2442, '127.0.0.1');
+//server.listen(2442, '127.0.0.1');
+server.listen(2442, '0.0.0.0');
 
 function sleep(millis) 
 {

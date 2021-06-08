@@ -78,7 +78,7 @@ js8.on('tcp.disconnected', (s) => {
     
     let utcDateTime = getUTCDateTimeString();
     
-    storeData(packets, ".\testdata\js8data" + utcDateTime + ".json");
+    storeData(packets, "./testdata/js8data" + utcDateTime + ".json");
     
     connected = false;
     

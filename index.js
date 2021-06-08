@@ -31,6 +31,8 @@ const fs = require("fs");
 
 var config = require('./config');
 let distanceUnit = config.distanceUnit; // km or miles for PSKReporter and RNG column in table
+let qsodatadir = "";
+
 
 // Function to check letters and numbers for callsign validation
 function alphanumeric(inputtxt)
@@ -47,6 +49,13 @@ function alphanumeric(inputtxt)
     }
 }
   
+ipcRenderer.on('qsodatadir', (event, message) => 
+{
+    console.log(message);
+
+    qsodatadir = message;
+});
+
 ipcRenderer.on('apistatus', (event, message) => 
 {
     let $indicator = $('#indicator-api');
@@ -306,16 +315,32 @@ let table = new Tabulator("#data-table", {
     selectable:true,
     rowSelected:function(row){
         row.getElement().style.backgroundColor = "#85C1E9"; // show the row is selected (blue colour)
+                      
+        // prevent more than one row from being selected
+        let selectedRows = table.getSelectedRows();
+        let rowCount = selectedRows.length;
+        let cs = row.getData().callsign;
+
+        if(rowCount > 1) // only allow one row selected (for now)
+        {
+            for(i = 0; i < rowCount; i++)
+            {
+                if(selectedRows[i].getData().callsign != cs)
+                    table.deselectRow(selectedRows[i]);
+            }
+        }      
 
         // enable the lookup buttons
         $('#buttonqth').removeAttr('disabled');
         $('#buttonpsk').removeAttr('disabled');
         $('#buttonmap').removeAttr('disabled');
 
+        // and disable the history button (will enable later if folder exists)
+        $('#buttonhistory').attr('disabled', 'disabled');
+
         // retrieve our rows grid and info and display it
         let info = row.getData().info;
         let grid = row.getData().grid;
-        let cs = row.getData().callsign;
         let infoText = "(none)";
 
         if(grid)
@@ -327,24 +352,11 @@ let table = new Tabulator("#data-table", {
         $("#additional-info").html(infoText);   
         
         // enable the qsohistory button only if we have a data folder for this callsign
-        if(fs.existsSync("./qsodata/" + cs))
+        if(fs.existsSync(qsodatadir + "/" + cs))
         {
             //console.log("directory exists for ", cs);
             $('#buttonhistory').removeAttr('disabled');
         }
-        
-        // prevent more than one row from being selected
-        let selectedRows = table.getSelectedRows();
-        let rowCount = selectedRows.length;
-               
-        if(rowCount > 1) // only allow one row selected (for now)
-        {
-            for(i = 0; i < rowCount; i++)
-            {
-                if(selectedRows[i].getData().callsign != cs)
-                    table.deselectRow(selectedRows[i]);
-            }
-        }         
     },
     scrollVertical:function(top){
         //console.log(top);

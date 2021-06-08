@@ -1,7 +1,8 @@
 /*
 MIT License
 
-Copyright (c) 2021 Rick MacDonald
+Copyright (c) 2021 Rick MacDonald (VA1UAV)
+https://www.rocketmanrc.com
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -24,24 +25,63 @@ SOFTWARE.
 
 // This is the server side (node.js) part of this Electron application.
 
-const { app, BrowserWindow, dialog, ipcMain} = require('electron');
+const { app, BrowserWindow, Menu, dialog, ipcMain} = require('electron');
 const url = require('url');
 const path = require('path');
 const JSONStorage = require('node-localstorage').JSONStorage;
+const fs = require('fs');
 
 let win; // the main application window
 let winQsoHistory; // the window for QSO History
 let winHeight;
 let connected = false; // this is to track the state of the JS8Call API connection
 
+var config = require('./config');
+let js8host = config.remoteIpAddress;
+let qsodatadir = config.qsodatadir;
+const mycallsign = config.callsign;
+
+if(mycallsign == "")
+    console.log("You should put your callsign in config.sys!");
+
+process.on('unhandledRejection', (error, p) => {
+    console.log('=== UNHANDLED REJECTION ===');
+    console.dir(error.stack);
+});
 
 if(process.platform !== 'darwin')
+{
     winHeight = 740; // make room for the menu bar for windows and linux
+    //menuTemplate.unshift({}); // Needed for Windows???
+}
 else
     winHeight = 700;
 
 let storageLocation = app.getPath('userData');
 let nodeStorage = new JSONStorage(storageLocation);
+console.log(storageLocation);
+
+// make the data directory if it doesnt exist (default is '~/.js8assistant/qsodata')
+if(qsodatadir == "")
+{
+    const homedir = require('os').homedir();
+    console.log('homedir: ' + homedir);
+    console.log(process.env.LOCALAPPDATA);
+    if(process.env.LOCALAPPDATA != undefined) // Windows?
+        qsodatadir = homedir + '\\.js8assistant\\qsodata'; // this is the default data directory for Windows
+    else
+        qsodatadir = homedir + '/.js8assistant/qsodata';    // and for Linux and MacOS
+    console.log('qsodatadir: ' + qsodatadir);
+
+    if(!fs.existsSync(qsodatadir))
+    {
+        fs.mkdirSync(qsodatadir, { recursive: true }); // make the directory recursively if it doesn't exist
+    }
+}
+else
+{
+    console.log('qsodatadir: ' + qsodatadir);
+}
 
 let mainWindowState = {}; 
 let qsoWindowState = {}; 
@@ -123,6 +163,8 @@ function createWindow()
         }
     });
 
+    win.setTitle('JS8Assistant');
+
   // and load the index.html of the app.
   win.loadURL(url.format ({
     pathname: path.join(__dirname, 'index.html'),
@@ -142,6 +184,10 @@ function createWindow()
    
     nodeStorage.setItem('mainWindowState', ws); 
   };
+  
+  win.on('page-title-updated', function(e) {
+    e.preventDefault();
+  });
 
   win.on('move', () => {
     storemainWindowState();
@@ -178,8 +224,10 @@ function createWindow()
       }
 
       if(connected)
-          win.webContents.send('apistatus', "connected"); // indicate in UI we are connected
-  });
+        win.webContents.send('apistatus', "connected"); // indicate in UI we are connected
+
+      win.webContents.send('qsodatadir', qsodatadir); // indicate in UI we are connected
+    });
 }
 
 let qsoHistoryWindowCallsign = ""; // we only want one window to open so keep track of it with this callsign variable
@@ -194,7 +242,10 @@ function createQsoHistoryWindow(callsign)
   // We have to get the windowstate here too because this window will be opened and closed
   try 
   { 
-    qsoWindowState = nodeStorage.getItem('qsoWindowState'); 
+    let qws = nodeStorage.getItem('qsoWindowState'); 
+
+    if(qws)
+        qsoWindowState = qws;
   } 
   catch (err) 
   { 
@@ -246,6 +297,8 @@ function createQsoHistoryWindow(callsign)
   
   winQsoHistory.webContents.on('did-finish-load', () => {
       winQsoHistory.setTitle("QSO History");
+      console.log("Sending qsodata path to history window", qsodatadir);
+      winQsoHistory.webContents.send('qsodatadir', qsodatadir);
       console.log("Sending callsign to history window", callsign);
       winQsoHistory.webContents.send('callsign', callsign);
   });
@@ -256,14 +309,54 @@ function createQsoHistoryWindow(callsign)
   });
 }
 
-function createWindows()
+function createWindowWithMenu()
 {
     createWindow();
-    //createQsoHistoryWindow(); // for testing, move to QSO History button event handler
+    //createQsoHistoryWindow('AB0CDE'); // for testing
+
+    // setting up the menu with just two items 
+    const menu = Menu.buildFromTemplate([
+    {
+        label: 'Menu',
+        submenu: [
+        {
+            label:'Open History for Call Sign',
+            accelerator: 'CmdOrCtrl+O',
+            // this is the main bit hijack the click event 
+            click() {
+                // construct the select file dialog 
+                dialog.showOpenDialog({
+                //defaultPath: './qsodata',
+                defaultPath: qsodatadir,
+                properties: ['openDirectory']
+                })
+                .then(function(fileObj) {
+                    // the fileObj has two props 
+                    if (!fileObj.canceled) {
+                        createQsoHistoryWindow(path.basename(fileObj.filePaths[0]));
+                    }
+                })
+                .catch(function(err) {
+                    console.error(err)  
+                })
+            } 
+        },
+        {
+            label:'Exit',
+            accelerator: 'Cmd+Q',
+            click() 
+            {
+                app.quit()
+            } 
+        }
+        ]
+    }
+    ])
+
+    Menu.setApplicationMenu(menu)
 }
 
-//app.whenReady().then(createWindow);
-app.whenReady().then(createWindows); // for feature testing
+app.whenReady().then(createWindowWithMenu);
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
@@ -273,7 +366,7 @@ app.on('window-all-closed', () => {
 
 app.on('activate', () => {
   if (BrowserWindow.getAllWindows().length === 0) {
-    createWindow()
+    createWindowWithMenu()
   }
 });
 
@@ -301,14 +394,12 @@ ipcMain.on("buttonhistory",(e, data)=>{
 */
 
 const js8 = require('@trippnology/lib-js8call')({
-    tcp: { enabled: true, port: 2442 },
+    tcp: { enabled: true, host: js8host, port: 2442 },
     udp: { enabled: false, port: 2242,  },
 });
 
 function timeoutCheck()
 {
-    //console.log(connected);
-    
     if(!connected)
     {
         js8.tcp.connect(); 
@@ -316,6 +407,21 @@ function timeoutCheck()
 }
 
 setInterval(timeoutCheck, 5000);
+
+function requestStationInfo()
+{
+    js8.station.getCallsign().then((callsign) => {
+        console.log('Callsign: ' + callsign);
+    });
+    
+    js8.station.getGrid().then((grid) => {
+        console.log('Grid: ' + grid);        
+    });
+    
+    js8.mode.getSpeed().then((mode) => {
+        console.log('Mode: ' + mode);
+    });
+}
 
 js8.on('tcp.connected', (connection) => {
     // At this point, we have setup the connection
@@ -325,23 +431,13 @@ js8.on('tcp.connected', (connection) => {
         connection.port,
         connection.mode
     );
+
+    setTimeout(requestStationInfo, 100);
     
     connected = true;
     // The following only works if the window has been opened but doesn't seem to
     // cause any problems if it isn't.
     win.webContents.send('apistatus', "connected"); // indicate in UI we are connected
-    
-    js8.station.getGrid().then((grid) => {
-        console.log('station grid');
-        console.log(grid);        
-        //console.log(js8.station.grid);
-        console.log();
-   });
-    
-    js8.mode.getSpeed().then((mode) => {
-        console.log('mode');
-        console.log(mode);
-    });
 });
 
 js8.on('tcp.disconnected', (s) => {
@@ -352,9 +448,16 @@ js8.on('tcp.disconnected', (s) => {
     win.webContents.send('apistatus', "disconnected"); // indicate in UI we are disconnected
 });
 
-js8.on('tcp-error', (e) => {
+js8.on('tcp.error', (e) => { // NOTE: this doesn't seem to prevent the "Unhandled rejection" message unfortunately
     // tcp error
-    console.log();
+    console.log('TCP error!');
+    console.log(e);
+});
+
+process.on('error', (e) => {
+    // tcp error
+    console.log("Something went wrong!");
+    console.log(e);
 });
 
 
@@ -434,6 +537,17 @@ js8.on('rig.ptt', (packet) => {
 });
 
 js8.on('packet', (packet) => {
+    // I don't think we need this but just in case the 100ms timer call isn't enough...
+    if(js8.station.grid == 'unknown')
+    {
+        // For some reason this doesn't succeed in the TCP connect event - timing?
+        // I put in a 100ms timer but it might not be long enough so request here too if it isn't set.
+        // If there is no grid recorded then the lookups are going to fail!
+        js8.station.getGrid().then((grid) => {
+            console.log('Grid requested in packet handler: ' + grid);
+        });    
+    }
+
     // Check for the LOG.QSO message which happens when a log entry has been saved
     if(packet.type == "LOG.QSO")
     {
@@ -452,21 +566,11 @@ js8.on('packet', (packet) => {
         console.log("Here is our record buffer to save: ");
         console.log(QsoRecordBuffer);
 
-        // Save the file in format ./qsodata/VA1UAV/qd1610822723539.md (for example)
-        const fs = require('fs');
-        let dir = './qsodata';
+        // Save the file in format using timestamp as part of filename, qsodatadir/VA1UAV/qd1610822723539.md (for example)
+        dir = qsodatadir + '/' + QsoRecordCallsign;
         if(!fs.existsSync(dir)){
-            fs.mkdirSync(dir);
+            fs.mkdirSync(dir, { recursive: true }); // make the directory recursively
         }
-        dir = './qsodata/' + QsoRecordCallsign;
-        if(!fs.existsSync(dir)){
-            fs.mkdirSync(dir);
-        }
-
-//        fs.writeFile(dir + '/qd' + Date.now() + '.md', QsoRecordBuffer, function(err) {
-//            // If an error occurred, show it and return
-//            if(err) return console.error(err);
-//          });      
 
         var qsofile = fs.createWriteStream(dir + '/qd' + Date.now() + '.md');
 
@@ -536,7 +640,7 @@ function processPacket(packet)
 	
 	let n = value.indexOf(":");
 	
-	if(n > 0)
+	if(n > 0 && js8.station.grid != 'unknown')
 	{
 		let cs = value.substring(0, n);	
 
@@ -545,12 +649,18 @@ function processPacket(packet)
         if(cs != "" && alphanumeric(cs) && callsigns.indexOf(cs) < 0) 
         {
             // sending range and bearing to renderer
+            //console.log('Station: ' + js8.station.grid);
             updateRngBrgGridInfoFromHamqthGrid(js8.station.grid, cs);
             updateRngBrgGridFromQrzcqGrid(js8.station.grid, cs);
             callsigns.push(cs);
             //console.log("updated rngbrggrid for " + cs);
         }		
 	}
+    else if(js8.station.grid == 'unknown')
+    {
+        // Wow, this should happen but in case it does I want to know about it!
+        console.log("ERROR in processPacket(), grid not known!");
+    }
 }
   
 js8.on('rx.activity', (packet) => {
