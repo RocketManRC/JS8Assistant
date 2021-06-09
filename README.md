@@ -18,13 +18,13 @@ grid square on levinecentral.com.
 # History
 When I first started using JS8Call for QSOs I tried to keep good notes about the conversations 
 but of course I got lazy after a while and wasn't very consistent about it. That meant that
-I was always having to search my notes about a call sign to see if I had any and if not
-try to find info on the web.
+I was always having to search my notes about a call sign to see if I there were any and if not
+try to find info on the web, usually by using QRZ.com.
 
-I had previously done a project to help with net control using the JS8Call API and decided to
-try and build on what I had done with that.
+I had previously worked on a project to help with net control using the JS8Call API and decided to
+try and build on what I had accomplished with that.
 
-I have been using JS8Assistant for a number of months now and finally in June 2021 found
+I have been using JS8Assistant for a number of months now and finally in June 2021 I found
 the time and energy to clean it up enough to release it as open source. I hope it is
 as helpful for others as it is for me!
 
@@ -73,10 +73,10 @@ http://files.js8call.com/latest.html
 IMPORTANT:
 
 At the moment keeping track of QSO History requires using the JS8Call log function at the 
-end of each QSO. But you do that already anyway, don't you? If you have been then there
+end of each QSO. But you do that already anyway, don't you? If so then there
 is a utility that will attempt to build QSO history files for you from JS8Call's
-ALL.TXT and js8call.log files. This will only work well if you have not allowed in 
-JS8Call's preferences directed messages without sending call signs.
+ALL.TXT and js8call.log files. This will only work well if you have not enabled
+directed messages without sending call signs in JS8Call's preferences.
 
 To run this utility first make sure you have edited config.js to include your call sign.
 
@@ -88,4 +88,18 @@ You should only really run this once to get started but if you need to run it ag
 you should back up your qsodata folder (it's location is printed out on the terminal
 when you run JS8Assistant).
 
+# User Interface
 
+This application makes extensive use of an amazing javascript table component called 
+Tabulator.js. One of the features that I really like is being able to sort on any column 
+just by clicking on the title of it (the default is to sort on UTC).
+
+To get information about any row of the table just select it by clicking on it. If
+there is public domain data available for that call sign then a short summary will
+be displayed in the area titled "Additional Info:".
+
+The Status column has a special function to hide heart beat entries. This can be done by
+clicking on the symbol with three dots to the left of the title.
+
+There is an option to delete entries by right clicking on a row and also there are
+right click menu items that replicate what the buttons below do.
