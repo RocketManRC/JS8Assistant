@@ -10,19 +10,46 @@ This utility requires your call sign to be set in config.js
 
 **********************************************************/
 
+var fs = require('fs');
 const config = require('./config');
 let qsodatadir = config.qsodatadir;
 const myCallsign = config.callsign;
 
+// If callsign is note defined then give error and exit.
+if(myCallsign == "")
+{
+    console.log();
+    console.log('Please enter your call sign in config.js and try again.');
+    console.log();
+    
+    process.exit();
+}
+
+console.log();
 const homedir = require('os').homedir();
 console.log('homedir: ' + homedir);
+console.log();
 
 if(qsodatadir == "") // if no directory in config.js then use the default one
     qsodatadir = homedir + '/.js8assistant/qsodata/'; // this is the default data directory
 
+console.log('The QSO data directory (qsodatadir) is: ');
+console.log(qsodatadir);
+console.log();
+
+
+// If the qsodatadir already exists then inform the user and exit.
+if(fs.existsSync(qsodatadir))
+{
+    console.log('The directory for qso data already exists, please move or delete it and try again!');
+    console.log();
+
+    process.exit();
+}
+
 var js8CallAppData = process.env.LOCALAPPDATA;
 
-if(js8CallAppData == "") 
+if(!js8CallAppData) 
 {
     js8CallAppData = process.platform == 'darwin' ? process.env.HOME + '/Library/Application Support/JS8Call' : process.env.HOME + "/.local/share/JS8Call";
 }
@@ -34,9 +61,10 @@ else
 const csvFilePath = js8CallAppData + '/js8call.log'; // The full path to JS8Call's js8call.log file
 const alltxtFilePath = js8CallAppData + '/ALL.TXT'; // The full path to JS8Call's ALL.TXT file
     
+console.log('The JS8Call data files to be used are: ');
 console.log(csvFilePath);
 console.log(alltxtFilePath);
-console.log(qsodatadir);
+console.log();
 
 async function app() 
 {
@@ -111,8 +139,7 @@ function wasqso(date, callsign)
         return(result);
     }
 
-    var fs = require('fs');
-    var lines = fs.readFileSync(alltxtFilePath).toString().split("\n");
+   var lines = fs.readFileSync(alltxtFilePath).toString().split("\n");
     var lastCallsign = "";
     var qsoNumber = 0;
     var loggedQso = false;
@@ -132,9 +159,6 @@ function wasqso(date, callsign)
                 else
                     callsign = cs;
             }
-
-            //if(alphanumeric(cs)) // check if valid callsign
-            //    callsign = cs;
 
             if(callsign != lastCallsign) // Is this valid? Why not two times in a row with the same callsign?
             {
@@ -156,19 +180,10 @@ function wasqso(date, callsign)
                     console.log('');
                     console.log("start of LOGGED qso " + qsoNumber + " at line " + i);
 
-                    //filename = "./output/" + callsign + '-' + qsoNumber + '.txt';
-
-                    //writeStream = fs.createWriteStream(filename);
-                    //writeStream.write("start of LOGGED qso " + qsoNumber + " at line " + i);
-
                     // Save the file in format qsodatadir/callsign/qd1610822723539.md (for example)
-                    let dir = qsodatadir;
+                    let dir = qsodatadir + callsign;
                     if(!fs.existsSync(dir)){
-                        fs.mkdirSync(dir);
-                    }
-                    dir = qsodatadir + callsign;
-                    if(!fs.existsSync(dir)){
-                        fs.mkdirSync(dir);
+                        fs.mkdirSync(dir, { recursive: true });
                     }
 
                     writeStream = fs.createWriteStream(dir + '/qd' + ts + '.md');
@@ -185,11 +200,6 @@ function wasqso(date, callsign)
                     console.log("callsign: " + callsign + "\n");
                     console.log("date: " + startDate);
                     console.log("time: " + startTime);
-
-                    //writeStream.write("\n" + lines[i]);
-                    //writeStream.write("\n" + "callsign: " + callsign);
-                    //writeStream.write("\n" + "date: " + startDate);
-                    //writeStream.write("\n" + "time: " + startTime + "\n");
                 }
             }
 
@@ -281,7 +291,6 @@ function wasqso(date, callsign)
                         if(loggedQso)
                         {
                             console.log(i + " " + t);
-                            //writeStream.write("\n" + i + " " + t);
                             writeStream.write(t);
                             wroteSomethingReceive = true;
                         }
@@ -293,7 +302,6 @@ function wasqso(date, callsign)
 
             if(loggedQso && wroteSomethingReceive)
             {
-                //console.log('end of reply block');
                 console.log('');
                 writeStream.write('\n</span>\n\n');
             }
