@@ -29,10 +29,12 @@ const {ipcRenderer} = require('electron');
 const shell = require('electron').shell;
 const fs = require("fs"); 
 
-var config = require('./config');
-let distanceUnit = config.distanceUnit; // km or miles for PSKReporter and RNG column in table
 let qsodatadir = "";
 
+// Fetch the preferences object
+const preferences = ipcRenderer.sendSync('getPreferences');
+let distanceUnit = preferences.settings.distance_unit;
+console.log(distanceUnit);
 
 // Function to check letters and numbers for callsign validation
 function alphanumeric(inputtxt)
@@ -51,9 +53,16 @@ function alphanumeric(inputtxt)
   
 ipcRenderer.on('qsodatadir', (event, message) => 
 {
-    console.log(message);
+    //console.log(message);
 
     qsodatadir = message;
+});
+
+ipcRenderer.on('distanceunit', (event, message) => 
+{
+    //console.log(message);
+
+    distanceUnit = message;
 });
 
 ipcRenderer.on('apistatus', (event, message) => 
@@ -176,8 +185,8 @@ $("form button").click(function(ev){
                 shell.openExternal('https://www.qrz.com/db/?callsign='+callsign);
             }
         }
-        else
-            console.log("no rows selected");
+        //else
+        //    console.log("no rows selected");
 
         //$("#additional-info").html("<h5>This is a test</h5>");
         //ipcRenderer.send("displayqth", sent);
@@ -197,8 +206,8 @@ $("form button").click(function(ev){
                 //shell.openExternal('http://www.levinecentral.com/ham/grid_square.php/'+callsign+'?Call='+callsign);
             }
         }
-        else
-            console.log("no rows selected");
+        //else
+        //    console.log("no rows selected");
             
         //ipcRenderer.send("displaymap", sent);
     }
@@ -217,8 +226,8 @@ $("form button").click(function(ev){
                 shell.openExternal('http://www.levinecentral.com/ham/grid_square.php/'+callsign+'?Call='+callsign);
             }
         }
-        else
-            console.log("no rows selected");
+        //else
+        //    console.log("no rows selected");
             
         //ipcRenderer.send("displaymap", sent);
     }
@@ -230,7 +239,7 @@ $("form button").click(function(ev){
         {
             let rowData = selectedRows[0].getData();
             let callsign = rowData.callsign;
-            console.log("sending buttonhistory event to main process");
+            //console.log("sending buttonhistory event to main process");
             ipcRenderer.send("buttonhistory", callsign);
         }
     }

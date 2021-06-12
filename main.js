@@ -30,6 +30,16 @@ const url = require('url');
 const path = require('path');
 const JSONStorage = require('node-localstorage').JSONStorage;
 const fs = require('fs');
+const log = require('electron-log');
+const preferences = require('./preferences');
+const findqsos = require('./findqsos');
+
+console.log = log.log;
+let logPath = log.transports.file.getFile().path;
+log.transports.file.level = false;
+fs.truncateSync(logPath); // clear what was in the log file previously
+log.transports.file.level = true;
+console.log(logPath);
 
 let win; // the main application window
 let winQsoHistory; // the window for QSO History
@@ -37,16 +47,56 @@ let winHeight;
 let connected = false; // this is to track the state of the JS8Call API connection
 
 var config = require('./config');
-let js8host = config.remoteIpAddress;
+let js8host = "";
 let qsodatadir = config.qsodatadir;
-const mycallsign = config.callsign;
+let mycallsign = "";
+let preferencesChanged = false;
+var preferencesTimer;
 
-if(mycallsign == "")
-    console.log("You should put your callsign in config.sys!");
+// Subscribing to preference changes.
+preferences.on('save', (preferences) => {
+    // unfortunately this is called every time a text box is updated which is not much use for me
+    // therefore we are going to set a flag and check every 100 ms if the window is closed.
+    preferencesChanged = true;
+
+    preferencesTimer = setInterval(preferencesCheck, 100);
+});
+
+function preferencesCheck()
+{
+    if(preferencesChanged)
+    {
+        try
+        {
+            let closed = preferences.prefsWindow.closed;
+        }
+        catch
+        {
+            console.log("preferences window closed");
+            preferencesChanged = false;
+            clearInterval(preferencesTimer);
+
+            // you can update the variables from the preferences now
+            let cs = preferences.value('settings.call_sign');
+            console.log("callsign from preferences: ");
+            mycallsign = cs.toUpperCase();
+            console.log(mycallsign);
+
+            js8host = preferences.value('settings.remote_ip');
+            console.log("js8host from preferences: ");
+            console.log(js8host);
+
+            let distanceUnit = preferences.value('settings.distance_unit');
+            win.webContents.send('distanceunit', distanceUnit); 
+            console.log("distanceunit from preferences: ");
+            console.log(distanceUnit);
+        }        
+    }
+}
 
 process.on('unhandledRejection', (error, p) => {
-    console.log('=== UNHANDLED REJECTION ===');
-    console.dir(error.stack);
+    //console.log('=== UNHANDLED REJECTION ===');
+    //console.dir(error.stack);
 });
 
 if(process.platform !== 'darwin')
@@ -221,12 +271,30 @@ function createWindow()
             
             firstRun.clear();
           }
+      } 
+
+      let cs = preferences.value('settings.call_sign');
+      console.log("callsign from preferences: ");
+      console.log(cs);
+
+      if(cs == null)
+      {
+          console.log("You need to put your callsign in config.sys!");
+          preferences.show();
+      }
+      else
+      {
+        mycallsign = cs.toUpperCase();
+        console.log(mycallsign);
       }
 
+      js8host = preferences.value('settings.remote_ip');
+      console.log(js8host);
+      
       if(connected)
         win.webContents.send('apistatus', "connected"); // indicate in UI we are connected
 
-      win.webContents.send('qsodatadir', qsodatadir); // indicate in UI we are connected
+      win.webContents.send('qsodatadir', qsodatadir); 
     });
 }
 
@@ -311,10 +379,14 @@ function createQsoHistoryWindow(callsign)
 
 function createWindowWithMenu()
 {
+    let enableFindqsos = false;
+    if(fs.readdirSync(qsodatadir).length === 0)
+        enableFindqsos = true;
+
     createWindow();
     //createQsoHistoryWindow('AB0CDE'); // for testing
 
-    // setting up the menu with just two items 
+    // setting up the menu
     const menu = Menu.buildFromTemplate([
     {
         label: 'Menu',
@@ -339,6 +411,28 @@ function createWindowWithMenu()
                 .catch(function(err) {
                     console.error(err)  
                 })
+            } 
+        },
+        {
+            label:'Preferences...',
+            accelerator: 'CmdOrCtrl+P',
+            click() 
+            {
+                preferences.show();
+            } 
+        },
+        {
+            label:'Find QSOs',
+            enabled: enableFindqsos,
+            id: 'fq',
+            click() 
+            {
+                console.log("findqsos for callsign: ");
+                console.log(mycallsign);
+                findqsos.findqsos(mycallsign);
+       
+                myItem = menu.getMenuItemById('fq');
+                myItem.enabled = false; // assume it was going to make some data! 
             } 
         },
         {
@@ -910,5 +1004,3 @@ async function qrzcqGridFromCallsign(callsign)
     
     return grid;
 }
-
-//qrzcqGridFromCallsign('va1uav');

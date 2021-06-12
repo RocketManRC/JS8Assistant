@@ -11,65 +11,80 @@ This utility requires your call sign to be set in config.js
 **********************************************************/
 
 var fs = require('fs');
-const config = require('./config');
-let qsodatadir = config.qsodatadir;
-const myCallsign = config.callsign;
-
-// If callsign is note defined then give error and exit.
-if(myCallsign == "")
-{
-    console.log();
-    console.log('Please enter your call sign in config.js and try again.');
-    console.log();
-    
-    process.exit();
-}
-
-console.log();
 const homedir = require('os').homedir();
-console.log('homedir: ' + homedir);
-console.log();
+const csv = require("csvtojson");
+const config = require('./config');
 
-if(qsodatadir == "") // if no directory in config.js then use the default one
-    qsodatadir = homedir + '/.js8assistant/qsodata/'; // this is the default data directory
-
-console.log('The QSO data directory (qsodatadir) is: ');
-console.log(qsodatadir);
-console.log();
-
-
-// If the qsodatadir already exists then inform the user and exit.
-if(fs.existsSync(qsodatadir))
+async function findqsos(myCallsign) 
 {
-    console.log('The directory for qso data already exists, please move or delete it and try again!');
+    console.log("callsign: ");
+    console.log(myCallsign);
+
+    let qsodatadir = config.qsodatadir;
+
+    //const myCallsign = config.callsign;
+    
+    // If callsign is not defined then give error and exit.
+    //if(myCallsign == "")
+    //{
+    //    console.log();
+    //    console.log('Please enter your call sign in config.js and try again.');
+    //    console.log();
+        
+    //    process.exit();
+    //}
+    
+    console.log();
+    console.log('homedir: ' + homedir);
+    console.log();
+    
+    if(qsodatadir == "") // if no directory in config.js then use the default one
+        qsodatadir = homedir + '/.js8assistant/qsodata/'; // this is the default data directory
+    
+    console.log('The QSO data directory (qsodatadir) is: ');
+    console.log(qsodatadir);
+    console.log();
+    
+    
+    // If the qsodatadir already exists then inform the user and exit.
+    //if(fs.existsSync(qsodatadir))
+    //{
+    //    console.log('The directory for qso data already exists, please move or delete it and try again!');
+    //    console.log();
+    
+    //    process.exit();
+    //}
+    
+    var js8CallAppData = process.env.LOCALAPPDATA;
+    
+    if(!js8CallAppData) 
+    {
+        js8CallAppData = process.platform == 'darwin' ? process.env.HOME + '/Library/Application Support/JS8Call' : process.env.HOME + "/.local/share/JS8Call";
+    }
+    else
+    {
+        js8CallAppData += '/JS8Call';
+    }
+
+    console.log("JS8Call log data folder: ");
+    console.log(js8CallAppData);
+    
+    const csvFilePath = js8CallAppData + '/js8call.log'; // The full path to JS8Call's js8call.log file
+    const alltxtFilePath = js8CallAppData + '/ALL.TXT'; // The full path to JS8Call's ALL.TXT file
+        
+    console.log('The JS8Call data files to be used are: ');
+    console.log(csvFilePath);
+    console.log(alltxtFilePath);
     console.log();
 
-    process.exit();
-}
-
-var js8CallAppData = process.env.LOCALAPPDATA;
-
-if(!js8CallAppData) 
-{
-    js8CallAppData = process.platform == 'darwin' ? process.env.HOME + '/Library/Application Support/JS8Call' : process.env.HOME + "/.local/share/JS8Call";
-}
-else
-{
-    js8CallAppData += '/JS8Call';
-}
-
-const csvFilePath = js8CallAppData + '/js8call.log'; // The full path to JS8Call's js8call.log file
-const alltxtFilePath = js8CallAppData + '/ALL.TXT'; // The full path to JS8Call's ALL.TXT file
+    if(!fs.existsSync(csvFilePath) || !fs.existsSync(alltxtFilePath))
+    {
+        console.log("No JS8Call data files to use!");
+        return;
+    }
     
-console.log('The JS8Call data files to be used are: ');
-console.log(csvFilePath);
-console.log(alltxtFilePath);
-console.log();
+    //return; // ********* testing... ************
 
-async function app() 
-{
-    var csv = require("csvtojson");
- 
     const qsos = await csv({
         noheader: true,
         headers: ['startDate','startTime','endDate','endTime','callsign','grid','freq','mode','rstIn','rstOut','power','comment','name']
@@ -123,7 +138,7 @@ async function app()
         }
     }
 
-function wasqso(date, callsign)
+    function wasqso(date, callsign)
     {
         var result = false;
 
@@ -139,13 +154,14 @@ function wasqso(date, callsign)
         return(result);
     }
 
-   var lines = fs.readFileSync(alltxtFilePath).toString().split("\n");
+    var lines = fs.readFileSync(alltxtFilePath).toString().split("\n");
     var lastCallsign = "";
     var qsoNumber = 0;
     var loggedQso = false;
     var writeStream;
 
-    for(i in lines) {
+    for(i in lines) 
+    {
         if(lines[i].includes("Transmitting")  && lines[i].includes(myCallsign + ':'))
         {
             var callsign = lastCallsign;
@@ -309,4 +325,4 @@ function wasqso(date, callsign)
     }
 }
 
-app();
+module.exports = { findqsos };
