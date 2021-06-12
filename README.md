@@ -39,6 +39,8 @@ For Windows there is an binary version contained in the zip file for the latest 
 
 https://github.com/RocketManRC/JS8Assistant/releases/tag/v0.21.0
 
+This has been virus checked at virustotal.com but you probably want to check it again yourself.
+
 The executable file is JS8Assistant_v0_21_0.exe.
 
 ### Source
