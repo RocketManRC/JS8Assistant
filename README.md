@@ -34,9 +34,14 @@ This is a Node.js application and uses the Electron framework. It uses web techn
 is cross platform. It should run under MacOS, Windows 10 and at least Debian flavours of Linux 
 (including the Raspberry Pi) without any changes.
 
-I am only supplying this in source form at the moment but all that means is that you 
-have to edit one file and then run the application from the command line after installing it.
+## Windows Binary
+For Windows there is an binary version contained in the zip file for the latest release:
 
+https://github.com/RocketManRC/JS8Assistant/releases/tag/v0.21.0
+
+The executable file is JS8Assistant_v0_21_0.exe.
+
+## Source
 Make sure you have a recent long term supported (LTS) version of NodeJS installed. 
 I have been using Node.js v14.15.3 and NPM 6.14.10. 
 
@@ -78,15 +83,14 @@ is a utility that will attempt to build QSO history files for you from JS8Call's
 ALL.TXT and js8call.log files. This will only work well if you have not enabled
 directed messages without sending call signs in JS8Call's preferences.
 
-To run this utility first make sure you have edited config.js to include your call sign.
+To run this utility select the 'Find QSOs' menu item. At the moment there is no
+progress dialog for this and it could take a few minutes to complete  with the
+application appearing frozen if you have made a lot of QSOs.
 
-Then use the command line:
+This is only meant to be run once and will be disabled once the QSO data directory 
+is created. In order to run it again the data folder must be deleted or moved.
 
-$ node findqsos.js
-
-You should only really run this once to get started but if you need to run it again
-you should back up your qsodata folder (it's location is printed out on the terminal
-when you run JS8Assistant).
+The location of the QSO data folder is shown on the preferences dialog Info display.
 
 # User Interface
 
