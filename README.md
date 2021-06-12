@@ -34,14 +34,14 @@ This is a Node.js application and uses the Electron framework. It uses web techn
 is cross platform. It should run under MacOS, Windows 10 and at least Debian flavours of Linux 
 (including the Raspberry Pi) without any changes.
 
-## Windows Binary
+### Windows Binary
 For Windows there is an binary version contained in the zip file for the latest release:
 
 https://github.com/RocketManRC/JS8Assistant/releases/tag/v0.21.0
 
 The executable file is JS8Assistant_v0_21_0.exe.
 
-## Source
+### Source
 Make sure you have a recent long term supported (LTS) version of NodeJS installed. 
 I have been using Node.js v14.15.3 and NPM 6.14.10. 
 
@@ -75,7 +75,7 @@ JS8Call can be found here:
 
 http://files.js8call.com/latest.html
 
-IMPORTANT:
+### IMPORTANT:
 
 At the moment keeping track of QSO History requires using the JS8Call log function at the 
 end of each QSO. But you do that already anyway, don't you? If so then there
