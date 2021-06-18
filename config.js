@@ -5,6 +5,6 @@ var config = {};
 // The default data directory for QSO data is '~/.js8assistant/qsodata'.
 // Put the full path here if you don't want the default data directory
 // but make sure that the directory you want to use already exists.
-config.qsodatadir = "/Users/rick/Dropbox/JS8Call/qsodata"; 
+config.qsodatadir = ""; 
 
 module.exports = config;
