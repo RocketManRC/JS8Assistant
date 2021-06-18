@@ -44,6 +44,7 @@ console.log(logPath);
 let win; // the main application window
 let winQsoHistory; // the window for QSO History
 let winHeight;
+let winWidth;
 let connected = false; // this is to track the state of the JS8Call API connection
 
 var config = require('./config');
@@ -102,10 +103,14 @@ process.on('unhandledRejection', (error, p) => {
 if(process.platform !== 'darwin')
 {
     winHeight = 740; // make room for the menu bar for windows and linux
+    winWidth = 864;
     //menuTemplate.unshift({}); // Needed for Windows???
 }
 else
+{
     winHeight = 700;
+    winWidth = 847;
+}
 
 let storageLocation = app.getPath('userData');
 let nodeStorage = new JSONStorage(storageLocation);
@@ -163,7 +168,7 @@ if(!mainWindowState)
     console.log('Create a default mainWindowState');
 
     mainWindowState = {};
-    mainWindowState.bounds = { width: 847, height: winHeight };
+    mainWindowState.bounds = { width: winWidth, height: winHeight };
 }
 
 if(!qsoWindowState)
@@ -496,7 +501,15 @@ function timeoutCheck()
 {
     if(!connected)
     {
-        js8.tcp.connect(); 
+        js8.tcp
+            .connect() 
+            //.then(() => {
+            //    console.log('TCP connected');
+            //})
+            .catch((err) => {
+                console.log("TCP can't connect yet, waiting for JS8Call...");
+                //console.error(err);
+            });    
     }
 }
 
@@ -542,10 +555,10 @@ js8.on('tcp.disconnected', (s) => {
     win.webContents.send('apistatus', "disconnected"); // indicate in UI we are disconnected
 });
 
-js8.on('tcp.error', (e) => { // NOTE: this doesn't seem to prevent the "Unhandled rejection" message unfortunately
+js8.on('tcp.error', (e) => { 
     // tcp error
-    console.log('TCP error!');
-    console.log(e);
+    //console.log('TCP error!');
+    //console.log(e);
 });
 
 process.on('error', (e) => {

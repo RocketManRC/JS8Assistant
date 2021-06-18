@@ -109,3 +109,10 @@ clicking on the symbol with three dots to the left of the title.
 
 There is an option to delete entries by right clicking on a row and also there are
 right click menu items that replicate what the buttons below do.
+
+# Credits
+
+Many thanks to Rikki Tripp for his excellent library lib-js8call and for providing
+great feedback and assistance during the development of this application.
+
+Lib-js8call can be found here: https://www.npmjs.com/package/@trippnology/lib-js8call
