@@ -16,7 +16,7 @@
     "appId": "JS8Assistant",
     "productName": "JS8Assistant",
     "mac": {
-      "target": []
+      "target": ["dmg"]
     },
     "nsis": {
       "oneClick": false,
@@ -39,7 +39,7 @@
     }
   },
   "dependencies": {
-    "@trippnology/lib-js8call": "^1.0.0",
+    "@trippnology/lib-js8call": "^1.0.1",
     "bootstrap": "4.5.3",
     "csvtojson": "^2.0.10",
     "electron-first-run": "^3.0.0",
