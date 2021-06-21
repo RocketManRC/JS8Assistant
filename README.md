@@ -34,14 +34,12 @@ This is a Node.js application and uses the Electron framework. It uses web techn
 is cross platform. It should run under MacOS, Windows 10 and at least Debian flavours of Linux 
 (including the Raspberry Pi) without any changes.
 
-### Windows Binary
-For Windows there is an binary version contained in the zip file for the latest release:
+### Binaries
+The are binaries for Windows, Linux and MacOS for the latest release:
 
-https://github.com/RocketManRC/JS8Assistant/releases/tag/v0.21.0
+https://github.com/RocketManRC/JS8Assistant/releases/tag/v0.21.2
 
-This has been virus checked at virustotal.com but you probably want to check it again yourself.
-
-The executable file is JS8Assistant_v0_21_0.exe.
+The Windows packages have been checked at virustotal.com but you probably want to check them again yourself.
 
 ### Source
 Make sure you have a recent long term supported (LTS) version of NodeJS installed. 
@@ -56,8 +54,6 @@ Clone the repository or download the zip file.
 In the application's folder use the command line to install the dependencies:
 
 $ npm install
-
-Edit the file config.js and put in your call sign.
 
 To run the application:
 
