@@ -1,15 +1,50 @@
 {
   "name": "JS8Assistant",
-  "version": "0.21.1",
+  "version": "0.21.2",
   "description": "An application to assist with using JS8Call",
   "main": "main.js",
   "scripts": {
-    "start": "electron ."
+    "start": "electron .",
+    "pack": "electron-builder --dir",
+    "raspi": "electron-builder --dir --armv7l --linux deb",
+    "dist": "electron-builder",
+    "trim_modules": "echo Size before trim: && du -sh ./node_modules/ && modclean -r --patterns=\"default:safe\" --additional-patterns=\"*coverage\" && echo Size after trim: && du -sh ./node_modules/",
+    "postversion": "npm run trim_modules && npm run dist"
   },
-  "author": "RocketManRC",
+  "author": "RocketManRC <support@rocketmanrc.com>",
   "license": "MIT",
+  "build": {
+    "appId": "JS8Assistant",
+    "productName": "JS8Assistant",
+    "mac": {
+      "target": [
+        "dmg"
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    },
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        "portable",
+        "zip"
+      ]
+    },
+    "linux": {
+      "target": [
+        "deb"
+      ]
+    }
+  },
   "dependencies": {
-    "@trippnology/lib-js8call": "^1.0.0",
+    "@trippnology/lib-js8call": "^1.0.1",
     "bootstrap": "4.5.3",
     "csvtojson": "^2.0.10",
     "electron-first-run": "^3.0.0",
@@ -24,6 +59,8 @@
     "tabulator-tables": "^4.9.3"
   },
   "devDependencies": {
-    "electron": "^10.4.7"
+    "electron": "^10.4.7",
+    "electron-builder": "22.11.7",
+    "modclean": "3.0.0-beta.1"
   }
 }
