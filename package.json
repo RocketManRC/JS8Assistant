@@ -1,22 +1,25 @@
 {
   "name": "JS8Assistant",
-  "version": "0.21.1",
+  "version": "0.21.2",
   "description": "An application to assist with using JS8Call",
   "main": "main.js",
   "scripts": {
     "start": "electron .",
     "pack": "electron-builder --dir",
+    "raspi": "electron-builder --dir --armv7l --linux deb",
     "dist": "electron-builder",
     "trim_modules": "echo Size before trim: && du -sh ./node_modules/ && modclean -r --patterns=\"default:safe\" --additional-patterns=\"*coverage\" && echo Size after trim: && du -sh ./node_modules/",
     "postversion": "npm run trim_modules && npm run dist"
   },
-  "author": "RocketManRC",
+  "author": "RocketManRC <support@rocketmanrc.com>",
   "license": "MIT",
   "build": {
     "appId": "JS8Assistant",
     "productName": "JS8Assistant",
     "mac": {
-      "target": ["dmg"]
+      "target": [
+        "dmg"
+      ]
     },
     "nsis": {
       "oneClick": false,
@@ -35,7 +38,9 @@
       ]
     },
     "linux": {
-      "target": []
+      "target": [
+        "deb"
+      ]
     }
   },
   "dependencies": {
