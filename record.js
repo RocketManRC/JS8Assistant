@@ -92,8 +92,12 @@ js8.on('tcp-error', (e) => {
 
 js8.on('packet', (packet) => {
     // Do your custom stuff
-    //console.log(packet);
+    console.log(packet);
     packets.push(packet);
     console.log(packets.length);
 });
 
+// Need to request the text that is sent (not worrying about typeahead here although JS8Assistant will)
+js8.on('rig.ptt', (packet) => {
+	js8.tx.getText();
+});

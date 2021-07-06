@@ -2,10 +2,10 @@
 
 var config = {};
 
-// distance unit for RNG column and PSKReporter
-config.distanceUnit = "km"; // "km" or "miles"
- 
-// change the following item to connect to a remote host 
-config.remoteIpAddress = "127.0.0.1"; 
+// The default data directory for QSO data is '~/.js8assistant/qsodata'.
+// Put the full path here if you don't want the default data directory
+// but make sure that the directory you want to use already exists.
+//config.qsodatadir = "/users/rick/dropbox/js8call/qsodata"; 
+config.qsodatadir = "";
 
 module.exports = config;

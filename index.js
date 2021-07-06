@@ -29,15 +29,21 @@ const {ipcRenderer} = require('electron');
 const shell = require('electron').shell;
 const fs = require("fs"); 
 
-var config = require('./config');
-let distanceUnit = config.distanceUnit; // km or miles for PSKReporter and RNG column in table
+let qsodatadir = "";
 
-// Function to check letters and numbers for callsign validation
-function alphanumeric(inputtxt)
+// Fetch the preferences object
+const preferences = ipcRenderer.sendSync('getPreferences');
+let distanceUnit = preferences.settings.distance_unit;
+console.log(distanceUnit);
+let fontSize = preferences.settings.font_size;
+console.log(fontSize);
+
+// Function to check letters numbers and slash for callsign validation
+function alphanumericslash(inputtxt)
 {
-    let letterNumber = /^[0-9a-zA-Z/]+$/;
+    let letterNumberSlash = /^[0-9a-zA-Z/]+$/;
     
-    if(inputtxt.match(letterNumber))
+    if(inputtxt.match(letterNumberSlash))
     {
         return true;
     }
@@ -47,6 +53,20 @@ function alphanumeric(inputtxt)
     }
 }
   
+ipcRenderer.on('qsodatadir', (event, message) => 
+{
+    //console.log(message);
+
+    qsodatadir = message;
+});
+
+ipcRenderer.on('distanceunit', (event, message) => 
+{
+    //console.log(message);
+
+    distanceUnit = message;
+});
+
 ipcRenderer.on('apistatus', (event, message) => 
 {
     let $indicator = $('#indicator-api');
@@ -96,9 +116,9 @@ ipcRenderer.on('activity', (event, message) =>
 	    
 	    let rows = table.searchRows("callsign", "=", cs);
         
-        // In the logic following, checking for alphanumeric is not perfect however 
+        // In the logic following, checking for alphanumeric and slash is not perfect however 
         // there is no real indication in JS8Call that there is a call sign in a packet...
-        if(cs != "" && alphanumeric(cs)) 
+        if(cs != "" && alphanumericslash(cs)) 
         {
             let stats;
             
@@ -167,8 +187,8 @@ $("form button").click(function(ev){
                 shell.openExternal('https://www.qrz.com/db/?callsign='+callsign);
             }
         }
-        else
-            console.log("no rows selected");
+        //else
+        //    console.log("no rows selected");
 
         //$("#additional-info").html("<h5>This is a test</h5>");
         //ipcRenderer.send("displayqth", sent);
@@ -188,8 +208,8 @@ $("form button").click(function(ev){
                 //shell.openExternal('http://www.levinecentral.com/ham/grid_square.php/'+callsign+'?Call='+callsign);
             }
         }
-        else
-            console.log("no rows selected");
+        //else
+        //    console.log("no rows selected");
             
         //ipcRenderer.send("displaymap", sent);
     }
@@ -208,8 +228,8 @@ $("form button").click(function(ev){
                 shell.openExternal('http://www.levinecentral.com/ham/grid_square.php/'+callsign+'?Call='+callsign);
             }
         }
-        else
-            console.log("no rows selected");
+        //else
+        //    console.log("no rows selected");
             
         //ipcRenderer.send("displaymap", sent);
     }
@@ -221,7 +241,7 @@ $("form button").click(function(ev){
         {
             let rowData = selectedRows[0].getData();
             let callsign = rowData.callsign;
-            console.log("sending buttonhistory event to main process");
+            //console.log("sending buttonhistory event to main process");
             ipcRenderer.send("buttonhistory", callsign);
         }
     }
@@ -299,23 +319,58 @@ function formatRngCell(cell, formatterParams, onRendered)
         return cell.getValue();
 }
 
- 
+//define custom formatter to change font size in column header
+var formatTitle = function(cell, formatterParams, onRendered){
+
+    //set font size
+    //cell.getElement().style.fontSize = fontSize.toString() + "px";
+    cell.getElement().style.fontSize = fontSize + "px";
+
+    return cell.getValue();
+}
+
+const ttCS = "Call sign of contact";
+const ttOFS = "Offset of contact's signal in Hz";
+const ttTD = "Time delta of signal from UTC second in milliseconds";
+const ttUTC = "UTC timestamp in seconds";
+const ttRNG = "RaNGe to contact in Miles or Km according to settings";
+const ttBRG = "Bearing to contact in degrees";
+const ttSNR = "Signal to noise ratio of contact's signal";
+const ttSTA = "HeartBeat (HB), CQ or QSO";
+
 //create Tabulator on DOM element with id "data-table"
 let table = new Tabulator("#data-table", {
  	height:367, // set height of table (in CSS or here), this enables the Virtual DOM and improves render speed dramatically (can be any valid css height value)
     selectable:true,
+    tooltipsHeader:true,
     rowSelected:function(row){
         row.getElement().style.backgroundColor = "#85C1E9"; // show the row is selected (blue colour)
+                      
+        // prevent more than one row from being selected
+        let selectedRows = table.getSelectedRows();
+        let rowCount = selectedRows.length;
+        let cs = row.getData().callsign;
+
+        if(rowCount > 1) // only allow one row selected (for now)
+        {
+            for(i = 0; i < rowCount; i++)
+            {
+                if(selectedRows[i].getData().callsign != cs)
+                    table.deselectRow(selectedRows[i]);
+            }
+        }      
 
         // enable the lookup buttons
         $('#buttonqth').removeAttr('disabled');
         $('#buttonpsk').removeAttr('disabled');
         $('#buttonmap').removeAttr('disabled');
 
+        // and disable the history button (will enable later if folder exists)
+        $('#buttonhistory').attr('disabled', 'disabled');
+
         // retrieve our rows grid and info and display it
         let info = row.getData().info;
         let grid = row.getData().grid;
-        let cs = row.getData().callsign;
         let infoText = "(none)";
 
         if(grid)
@@ -327,24 +382,11 @@ let table = new Tabulator("#data-table", {
         $("#additional-info").html(infoText);   
         
         // enable the qsohistory button only if we have a data folder for this callsign
-        if(fs.existsSync("./qsodata/" + cs))
+        if(fs.existsSync(qsodatadir + "/" + cs))
         {
             //console.log("directory exists for ", cs);
             $('#buttonhistory').removeAttr('disabled');
         }
-        
-        // prevent more than one row from being selected
-        let selectedRows = table.getSelectedRows();
-        let rowCount = selectedRows.length;
-               
-        if(rowCount > 1) // only allow one row selected (for now)
-        {
-            for(i = 0; i < rowCount; i++)
-            {
-                if(selectedRows[i].getData().callsign != cs)
-                    table.deselectRow(selectedRows[i]);
-            }
-        }         
     },
     scrollVertical:function(top){
         //console.log(top);
@@ -419,6 +461,8 @@ let table = new Tabulator("#data-table", {
         let rowCount = selectedRows.length;
         let rowSelected = false;
         
+        row.getElement().style.fontSize = fontSize + "px";
+
         if(rowCount >= 1)
         {
             for(i = 0; i < rowCount; i++)
@@ -454,14 +498,15 @@ let table = new Tabulator("#data-table", {
         }
     },
  	columns:[ //Define Table Columns
-	 	{title:"Call Sign", field:"callsign", width:125},
-	 	{title:"Offset", field:"offset", width:80, sorter:"number"},
-	 	{title:"Time Delta (ms)", field:"timedrift", width:150, sorter:"number"},
-	 	{title:"UTC", field:"utc", width:125, formatter:formatUtcCell, headerSortStartingDir:"desc"},
-	 	{title:"RNG", field:"rng", width:75, formatter:formatRngCell, sorter:"number"},
-	 	{title:"BRG", field:"brg", width:75, sorter:"number"},
-	 	{title:"SNR", field:"snr", width:75, sorter:"number"},
-	 	{title:"Status", field:"status", width:110, headerMenu:statusHeaderMenu},
+        // These column widths were hand crafted for the default font size of 14 to accommodating other sizes is a bit of a kludge...
+        {title:"Call Sign", field:"callsign", titleFormatter:formatTitle, width:Math.floor(fontSize*125/14), headerTooltip:ttCS},
+        {title:"Offset", field:"offset", titleFormatter:formatTitle, width:Math.floor(fontSize*80/14+Math.abs(14-fontSize)*5), sorter:"number", headerTooltip:ttOFS},
+	 	{title:"Time Delta (ms)", field:"timedrift", titleFormatter:formatTitle, width:Math.floor(fontSize*150/14+Math.abs(14-fontSize)*5), sorter:"number", headerTooltip:ttTD},
+	 	{title:"UTC", field:"utc", titleFormatter:formatTitle, width:Math.floor(fontSize*125/14+Math.abs(14-fontSize)*2), formatter:formatUtcCell, headerSortStartingDir:"desc", headerTooltip:ttUTC},
+	 	{title:"RNG", field:"rng", titleFormatter:formatTitle, width:Math.floor(fontSize*75/14+Math.abs(14-fontSize)*3), formatter:formatRngCell, sorter:"number", headerTooltip:ttRNG},
+	 	{title:"BRG", field:"brg", titleFormatter:formatTitle, width:Math.floor(fontSize*75/14+Math.abs(14-fontSize)*2), sorter:"number", headerTooltip:ttBRG},
+	 	{title:"SNR", field:"snr", titleFormatter:formatTitle, width:Math.floor(fontSize*75/14+Math.abs(14-fontSize)*2), sorter:"number", headerTooltip:ttSNR},
+	 	{title:"Status", field:"status", titleFormatter:formatTitle, width:Math.floor(fontSize*110/14+Math.abs(14-fontSize)*5), headerMenu:statusHeaderMenu, headerTooltip:ttSTA},
 	 	{title:"Info", field:"info", visible:false},
 	 	{title:"Grid", field:"grid", visible:false}
  	],

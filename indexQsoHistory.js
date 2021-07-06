@@ -29,6 +29,14 @@ const {ipcRenderer} = require('electron');
 const shell = require('electron').shell;
 const showdown = require('./node_modules/showdown/dist/showdown.min.js');
 const fs = require('fs');
+let qsodatadir = "";
+
+ipcRenderer.on('qsodatadir', (event, message) => 
+{
+    console.log(message);
+
+    qsodatadir = message;
+});
 
 ipcRenderer.on('callsign', (event, message) => 
 {
@@ -37,12 +45,14 @@ ipcRenderer.on('callsign', (event, message) =>
 
     // from the directory with the callsign add rows to the table from the
     // datafiles within. The timestamp is in the name of the file (end of qso).
-    filenames = fs.readdirSync('./qsodata/' + message); 
+    filenames = fs.readdirSync(qsodatadir + '/' + message); 
 
     filenames.forEach(file => { 
         //console.log(file); 
         let parts = file.split('.');
         let utc = Number(parts[0].substring(2));
+
+        console.log('utc: ' + utc);
 
         table.addRow({utcdate:utc, utcendtime:utc, filename:file}, true); // add row to top
     }); 
@@ -81,6 +91,8 @@ function timeFromTimestamp(ts)
     let date = new Date(unix_timestamp);
     // Hours part from the timestamp
     let hours = date.getUTCHours();
+    if(hours < 10)
+        hours = "0" + hours;
     // Minutes part from the timestamp
     let minutes = "0" + date.getUTCMinutes();
     // Seconds part from the timestamp
@@ -99,7 +111,8 @@ function dateFromTimestamp(ts)
     let date = new Date(unix_timestamp);
     let year = date.getUTCFullYear();
     let day = "0" + date.getUTCDate();
-    let month = "0" + date.getUTCMonth() + 1;
+    let month = "0" + (date.getUTCMonth() + 1);
+    //console.log(date + ' ' + year + ' ' + day + ' ' + month);
 
     // Will display date as 2021/01/22
     let formattedDate = year + '/' + month.substr(-2) + '/' + day.substr(-2);
@@ -151,7 +164,7 @@ let table = new Tabulator("#data-table", {
         // retrieve our rows filename and display it
         let filename = row.getData().filename;
         let callsign = $("#callsign").text();
-        let filepath = "./qsodata/" + callsign + "/" + filename;
+        let filepath = qsodatadir + '/' + callsign + "/" + filename;
 
         console.log(filepath);
 
@@ -222,23 +235,9 @@ let table = new Tabulator("#data-table", {
     },
     rowContextMenu:[
         {
-            label:"Delete Call Sign",
+            label:"Edit QSO text in default editor",
             action:function(e, row){
-                row.delete();
-            }
-        },
-        {
-            label:"Show QRZ.com profile",
-            action:function(e, row){
-                let callsign = row.getData().callsign;
-                shell.openExternal('https://www.qrz.com/db/?callsign='+callsign);
-            }
-        },
-        {
-            label:"Show on PSKreporter",
-            action:function(e, row){
-                let callsign = row.getData().callsign;
-                shell.openExternal('https://www.pskreporter.info/pskmap.html?preset&callsign='+callsign+'&mode=JS8&timerange=3600&distunit=' + distanceUnit + '&hideunrec=1&blankifnone=1');
+                shell.openExternal();
             }
         }
     ],
@@ -269,10 +268,11 @@ let table = new Tabulator("#data-table", {
  	columns:[ //Define Table Columns
         {title:"UTC Date", field:"utcdate", width:200, formatter:formatUtcDateCell, headerSortStartingDir:"desc"},
         //{title:"UTC Start Time", field:"utcstarttime", width:150, formatter:formatUtcCell, headerSortStartingDir:"desc"},
-        {title:"UTC End Time", field:"utcendtime", width:200, formatter:formatUtcCell, headerSortStartingDir:"desc"},
+        {title:"UTC Start Time", field:"utcendtime", width:200, formatter:formatUtcCell, headerSortStartingDir:"desc"},
         //{title:"Elapsed Time (min)", field:"elapsedtime", width:175, sorter:"number"},
-	 	{title:"Filename", field:"filename", headerMenu:filenameHeaderMenu}
- 	],
+        //{title:"Filename", field:"filename", headerMenu:filenameHeaderMenu}
+        {title:"Filename", field:"filename"}
+    ],
  	initialSort:[
         {column:"utcdate", dir:"desc"} //sort by this first
     ]
