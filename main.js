@@ -32,7 +32,6 @@ const JSONStorage = require('node-localstorage').JSONStorage;
 const fs = require('fs');
 const log = require('electron-log');
 const preferences = require('./preferences');
-const findqsos = require('./findqsos');
 const nodeCleanup = require('node-cleanup');
 const callsign = require('callsign/src/node');
 
@@ -291,8 +290,7 @@ function createWindow()
 
       if(cs == null)
       {
-          console.log("You need to put your callsign in config.sys!");
-          preferences.show();
+        preferences.show();
       }
       else
       {
@@ -440,15 +438,39 @@ function createWindowWithMenu()
             } 
         },
         {
-            label:'Find QSOs',
+            label:'Find QSOs in JS8Call log data',
             enabled: enableFindqsos,
             id: 'fq',
             click() 
             {
-                console.log("findqsos for callsign: ");
-                console.log(mycallsign);
-                findqsos.findqsos(mycallsign);
-       
+                const ProgressBar = require('electron-progressbar');
+
+                var progressBar = new ProgressBar({
+                    text: 'Finding QSO data...',
+                    detail: 'Wait...'
+                });
+                
+                progressBar
+                .on('completed', function() {
+                    console.info(`completed...`);
+                    progressBar.detail = 'Task completed. Exiting...';
+                })
+                .on('aborted', function() {
+                    console.info(`aborted...`);
+                });
+                                
+                var cp = require('child_process');
+                let p = path.resolve(__dirname, 'findqsos.js');
+
+                //console.log(p);
+
+                let sp = cp.fork(p, [mycallsign]);
+
+                sp.on('exit', (code) => {
+                    console.log(`child process exited with code ${code}`);
+                    progressBar.setCompleted();
+                  });
+                  
                 myItem = menu.getMenuItemById('fq');
                 myItem.enabled = false; // assume it was going to make some data! 
             } 
@@ -608,15 +630,14 @@ function markdownText(txt)
             let me = parts[0];
             let msg = parts[1];
             //console.log('In markdownText() sent by me part');
-            res = '<span style="color:green">' + '\n**' + me + ':**' + msg + '\n</span>\n\n'; // simple markdown + html annotation
+            res = '<span style="color:green">' + '**' + me + ':**' + msg + '</span>\n\n'; // simple markdown + html annotation
         }
         else // it could be a reply or a directed message "to me" but without my callsign (??)
         {
             let cs = parts[0];
             let msg = parts[1];
-            //QsoRecordCallsign = cs; // *** I don't think this is needed or desired - testing now...
             //console.log('In markdownText() reply part, set QsoRecordCallsign to: ' + cs);
-            res = '<span style="color:blue">' + '\n**' + cs + ':**' + msg + '\n</span>\n\n'; // simple markdown + html annotation
+            res = '<span style="color:blue">' + '**' + cs + ':**' + msg + '</span>\n\n'; // simple markdown + html annotation
         }
     }
 

@@ -237,7 +237,12 @@ let table = new Tabulator("#data-table", {
         {
             label:"Edit QSO text in default editor",
             action:function(e, row){
-                shell.openExternal();
+                let filename = row.getData().filename;
+                let callsign = $("#callsign").text();
+                let filepath = qsodatadir + '/' + callsign + "/" + filename;
+
+                //console.log(filepath);
+                shell.openExternal('file://' + filepath);
             }
         }
     ],

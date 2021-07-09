@@ -18,6 +18,8 @@ const fs = require('fs')
 
 const storeData = (data, path) => {
   try {
+    console.log('Saving data to: ' + path);
+
     fs.writeFileSync(path, JSON.stringify(data))
   } catch (err) {
     console.error(err)
@@ -78,7 +80,7 @@ js8.on('tcp.disconnected', (s) => {
     
     let utcDateTime = getUTCDateTimeString();
     
-    storeData(packets, ".\testdata\js8data" + utcDateTime + ".json");
+    storeData(packets, "./testdata/js8data" + utcDateTime + ".json");
     
     connected = false;
     
@@ -92,7 +94,7 @@ js8.on('tcp-error', (e) => {
 
 js8.on('packet', (packet) => {
     // Do your custom stuff
-    console.log(packet);
+    //console.log(packet);
     packets.push(packet);
     console.log(packets.length);
 });

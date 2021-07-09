@@ -12,8 +12,13 @@ This utility requires your call sign to be set in config.js
 
 var fs = require('fs');
 const homedir = require('os').homedir();
-const csv = require("csvtojson");
+const csv = require('./node_modules/csvtojson');
 const config = require('./config');
+
+function sleep(millis) 
+{
+	return new Promise(resolve => setTimeout(resolve, millis));  
+}
 
 async function findqsos(myCallsign) 
 {
@@ -234,7 +239,7 @@ async function findqsos(myCallsign)
                     let res;
                     
                     if(alphanumeric(cs))
-                        res = '<span style="color:blue">' + '\n**' + cs + ':**' + msg; // simple markdown + html annotation
+                        res = '<span style="color:blue">' + '**' + cs + ':**' + msg; // simple markdown + html annotation
                     else
                         res = t;
 
@@ -248,7 +253,7 @@ async function findqsos(myCallsign)
             {
                 //console.log('end of transmission block');
                 console.log('');
-                writeStream.write('\n</span>\n\n');
+                writeStream.write('</span>\n\n');
             }
 
             let offset = "";
@@ -281,7 +286,7 @@ async function findqsos(myCallsign)
                         let parts = t.split(':');
                         let me = parts[0];
                         let msg = parts[1];
-                        let res = '<span style="color:green">' + '\n**' + me + ':**' + msg; // simple markdown + html annotation
+                        let res = '<span style="color:green">' + '**' + me + ':**' + msg; // simple markdown + html annotation
                                     
                         console.log(res);
                         writeStream.write(res);
@@ -319,10 +324,15 @@ async function findqsos(myCallsign)
             if(loggedQso && wroteSomethingReceive)
             {
                 console.log('');
-                writeStream.write('\n</span>\n\n');
+                writeStream.write('</span>\n\n');
+                //await sleep(10); // slow things down for testing on a fast machine!
             }
         }
     }
 }
 
-module.exports = { findqsos };
+//module.exports = { findqsos };
+
+let callsign = process.argv[2];
+
+findqsos(callsign);
