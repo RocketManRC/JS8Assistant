@@ -847,7 +847,7 @@ function saveQSO()
 
     qsofile.end();
 
-    // also create a file with extension .info to hold the start and stop time
+    win.webContents.send('savedqso', QsoRecordCallsign); // tell the renderer we have saved a qso so it can bold the callsign in the table
      
     QsoRecordBuffer = [];
     QsoRecordCallsign = "";

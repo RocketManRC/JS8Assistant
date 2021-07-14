@@ -91,6 +91,30 @@ ipcRenderer.on('rig.ptt.off', () =>
     $('#indicator-ptt').removeClass('btn-secondary btn-danger').addClass('btn-success');
 });
 
+ipcRenderer.on('savedqso', (event, message) => 
+{
+    let cs = message;
+    let rows = table.searchRows("callsign", "=", cs);
+
+    // Note we have to modify the callsign first by adding a '*' to it then modify it again
+    // in order to get the call sign to turn bold (because the data has to change to get the
+    // cell formatter to do anything)
+    rows[0].update({callsign:cs + '*'});
+    rows[0].update({callsign:cs});
+
+    // If the row for that call sign happens to be selected then enable the qsohistory button
+    let selectedRows = table.getSelectedRows();
+    let rowCount = selectedRows.length;
+
+    if(rowCount == 1)
+    {
+        let rowData = selectedRows[0].getData();
+        let callsign = rowData.callsign;
+        if(callsign == cs)
+            $('#buttonhistory').removeAttr('disabled');
+    }
+});
+
 
 let scrolling = 0;
 
@@ -309,6 +333,19 @@ function formatUtcCell(cell, formatterParams, onRendered)
     return timeFromTimestamp(cell.getValue());
 }
 
+function formatCallsignCell(cell, formatterParams, onRendered)
+{
+    let res = "";
+    let cs = cell.getValue();
+
+    if(fs.existsSync(qsodatadir + "/" + cs))
+        res = "<span style='font-weight:bold;'>" + cs + "</span>";
+    else
+        res = cs;
+
+    return res;
+}
+
 function formatRngCell(cell, formatterParams, onRendered)
 {
     if(distanceUnit == "km")
@@ -499,7 +536,7 @@ let table = new Tabulator("#data-table", {
     },
  	columns:[ //Define Table Columns
         // These column widths were hand crafted for the default font size of 14 to accommodating other sizes is a bit of a kludge...
-        {title:"Call Sign", field:"callsign", titleFormatter:formatTitle, width:Math.floor(fontSize*125/14), headerTooltip:ttCS},
+        {title:"Call Sign", field:"callsign", titleFormatter:formatTitle, width:Math.floor(fontSize*125/14), formatter:formatCallsignCell, headerTooltip:ttCS},
         {title:"Offset", field:"offset", titleFormatter:formatTitle, width:Math.floor(fontSize*80/14+Math.abs(14-fontSize)*5), sorter:"number", headerTooltip:ttOFS},
 	 	{title:"Time Delta (ms)", field:"timedrift", titleFormatter:formatTitle, width:Math.floor(fontSize*150/14+Math.abs(14-fontSize)*5), sorter:"number", headerTooltip:ttTD},
 	 	{title:"UTC", field:"utc", titleFormatter:formatTitle, width:Math.floor(fontSize*125/14+Math.abs(14-fontSize)*2), formatter:formatUtcCell, headerSortStartingDir:"desc", headerTooltip:ttUTC},
