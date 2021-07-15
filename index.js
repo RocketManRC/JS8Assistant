@@ -35,8 +35,8 @@ let qsodatadir = "";
 const preferences = ipcRenderer.sendSync('getPreferences');
 let distanceUnit = preferences.settings.distance_unit;
 console.log(distanceUnit);
+
 let fontSize = preferences.settings.font_size;
-console.log(fontSize);
 
 // Function to check letters numbers and slash for callsign validation
 function alphanumericslash(inputtxt)

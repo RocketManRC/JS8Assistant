@@ -59,6 +59,18 @@ var preferencesTimer;
 let js8host = preferences.value('settings.remote_ip');
 console.log('remote_ip: ' + js8host);
 
+let storageLocation = app.getPath('userData');
+let nodeStorage = new JSONStorage(storageLocation);
+console.log(storageLocation);
+
+// The following is to handle the addition of font_size to preferences (in v0.30.0)
+// otherwise the window isn't sized properly after the update.
+if(!preferences.value('settings.font_size'))
+{
+    preferences.value('settings.font_size', '14');
+    nodeStorage.removeItem('mainWindowState'); // the window height is less when specifying the font size
+}
+
 // Subscribing to preference changes.
 preferences.on('save', (preferences) => {
     // unfortunately this is called every time a text box is updated which is not much use for me
@@ -107,7 +119,7 @@ process.on('unhandledRejection', (error, p) => {
 
 if(process.platform !== 'darwin')
 {
-    winHeight = 740; // make room for the menu bar for windows and linux
+    winHeight = 698; // make room for the menu bar for windows and linux
     winWidth = 864;
     //menuTemplate.unshift({}); // Needed for Windows???
 }
@@ -116,10 +128,6 @@ else
     winHeight = 660;
     winWidth = 847;
 }
-
-let storageLocation = app.getPath('userData');
-let nodeStorage = new JSONStorage(storageLocation);
-console.log(storageLocation);
 
 // make the data directory if it doesnt exist (default is '~/.js8assistant/qsodata')
 if(qsodatadir == "")
