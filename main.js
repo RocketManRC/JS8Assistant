@@ -113,7 +113,7 @@ if(process.platform !== 'darwin')
 }
 else
 {
-    winHeight = 700;
+    winHeight = 660;
     winWidth = 847;
 }
 
@@ -298,9 +298,6 @@ function createWindow()
         console.log(mycallsign);
       }
 
-      js8host = preferences.value('settings.remote_ip');
-      console.log(js8host);
-      
       if(connected)
         win.webContents.send('apistatus', "connected"); // indicate in UI we are connected
 
