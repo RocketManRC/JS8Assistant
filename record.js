@@ -18,6 +18,8 @@ const fs = require('fs')
 
 const storeData = (data, path) => {
   try {
+    console.log('Saving data to: ' + path);
+
     fs.writeFileSync(path, JSON.stringify(data))
   } catch (err) {
     console.error(err)
@@ -97,3 +99,7 @@ js8.on('packet', (packet) => {
     console.log(packets.length);
 });
 
+// Need to request the text that is sent (not worrying about typeahead here although JS8Assistant will)
+js8.on('rig.ptt', (packet) => {
+	js8.tx.getText();
+});

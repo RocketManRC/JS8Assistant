@@ -235,23 +235,14 @@ let table = new Tabulator("#data-table", {
     },
     rowContextMenu:[
         {
-            label:"Delete Call Sign",
+            label:"Edit QSO text in default editor",
             action:function(e, row){
-                row.delete();
-            }
-        },
-        {
-            label:"Show QRZ.com profile",
-            action:function(e, row){
-                let callsign = row.getData().callsign;
-                shell.openExternal('https://www.qrz.com/db/?callsign='+callsign);
-            }
-        },
-        {
-            label:"Show on PSKreporter",
-            action:function(e, row){
-                let callsign = row.getData().callsign;
-                shell.openExternal('https://www.pskreporter.info/pskmap.html?preset&callsign='+callsign+'&mode=JS8&timerange=3600&distunit=' + distanceUnit + '&hideunrec=1&blankifnone=1');
+                let filename = row.getData().filename;
+                let callsign = $("#callsign").text();
+                let filepath = qsodatadir + '/' + callsign + "/" + filename;
+
+                //console.log(filepath);
+                shell.openExternal('file://' + filepath);
             }
         }
     ],
@@ -284,8 +275,9 @@ let table = new Tabulator("#data-table", {
         //{title:"UTC Start Time", field:"utcstarttime", width:150, formatter:formatUtcCell, headerSortStartingDir:"desc"},
         {title:"UTC Start Time", field:"utcendtime", width:200, formatter:formatUtcCell, headerSortStartingDir:"desc"},
         //{title:"Elapsed Time (min)", field:"elapsedtime", width:175, sorter:"number"},
-	 	{title:"Filename", field:"filename", headerMenu:filenameHeaderMenu}
- 	],
+        //{title:"Filename", field:"filename", headerMenu:filenameHeaderMenu}
+        {title:"Filename", field:"filename"}
+    ],
  	initialSort:[
         {column:"utcdate", dir:"desc"} //sort by this first
     ]

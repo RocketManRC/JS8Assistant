@@ -32,7 +32,8 @@ const JSONStorage = require('node-localstorage').JSONStorage;
 const fs = require('fs');
 const log = require('electron-log');
 const preferences = require('./preferences');
-const findqsos = require('./findqsos');
+const nodeCleanup = require('node-cleanup');
+const callsign = require('callsign/src/node');
 
 console.log = log.log;
 let logPath = log.transports.file.getFile().path;
@@ -48,11 +49,15 @@ let winWidth;
 let connected = false; // this is to track the state of the JS8Call API connection
 
 var config = require('./config');
-let js8host = "";
+const { Console } = require('console');
 let qsodatadir = config.qsodatadir;
+
 let mycallsign = "";
 let preferencesChanged = false;
 var preferencesTimer;
+
+let js8host = preferences.value('settings.remote_ip');
+console.log('remote_ip: ' + js8host);
 
 // Subscribing to preference changes.
 preferences.on('save', (preferences) => {
@@ -214,6 +219,7 @@ function createWindow()
         x: mainWindowState.bounds.x,
         y: mainWindowState.bounds.y,
         webPreferences: {
+        defaultFontSize: preferences.value('settings.font_size'), 
         nodeIntegration: true
         }
     });
@@ -284,8 +290,7 @@ function createWindow()
 
       if(cs == null)
       {
-          console.log("You need to put your callsign in config.sys!");
-          preferences.show();
+        preferences.show();
       }
       else
       {
@@ -307,8 +312,17 @@ let qsoHistoryWindowCallsign = ""; // we only want one window to open so keep tr
 
 function createQsoHistoryWindow(callsign) 
 {
-  if(qsoHistoryWindowCallsign != "")
+  if(qsoHistoryWindowCallsign == callsign)
+  {
+    // show it if it exists already and return
+    winQsoHistory.show();
+
     return;
+  }
+  else if(qsoHistoryWindowCallsign != "")
+  {
+      winQsoHistory.destroy();
+  }
 
   qsoHistoryWindowCallsign = callsign;
 
@@ -427,15 +441,39 @@ function createWindowWithMenu()
             } 
         },
         {
-            label:'Find QSOs',
+            label:'Find QSOs in JS8Call log data',
             enabled: enableFindqsos,
             id: 'fq',
             click() 
             {
-                console.log("findqsos for callsign: ");
-                console.log(mycallsign);
-                findqsos.findqsos(mycallsign);
-       
+                const ProgressBar = require('electron-progressbar');
+
+                var progressBar = new ProgressBar({
+                    text: 'Finding QSO data...',
+                    detail: 'Wait...'
+                });
+                
+                progressBar
+                .on('completed', function() {
+                    console.info(`completed...`);
+                    progressBar.detail = 'Task completed. Exiting...';
+                })
+                .on('aborted', function() {
+                    console.info(`aborted...`);
+                });
+                                
+                var cp = require('child_process');
+                let p = path.resolve(__dirname, 'findqsos.js');
+
+                //console.log(p);
+
+                let sp = cp.fork(p, [mycallsign]);
+
+                sp.on('exit', (code) => {
+                    console.log(`child process exited with code ${code}`);
+                    progressBar.setCompleted();
+                  });
+                  
                 myItem = menu.getMenuItemById('fq');
                 myItem.enabled = false; // assume it was going to make some data! 
             } 
@@ -581,6 +619,7 @@ process.on('error', (e) => {
 
 let QsoRecordBuffer = []; // Record the QSO in a text array
 let QsoRecordCallsign = ""; // This is who we are talking to
+let HeartbeatReplyBuffer = []; // Keep track of HB replies here instead of starting a new QSO
 
 function markdownText(txt)
 {
@@ -593,42 +632,179 @@ function markdownText(txt)
         {
             let me = parts[0];
             let msg = parts[1];
-            res = '<span style="color:green">' + '\n**' + me + ':**' + msg + '\n</span>\n\n'; // simple markdown + html annotation
+            //console.log('In markdownText() sent by me part');
+            res = '<span style="color:green">' + '**' + me + ':**' + msg + '</span>\n\n'; // simple markdown + html annotation
         }
         else // it could be a reply or a directed message "to me" but without my callsign (??)
         {
             let cs = parts[0];
             let msg = parts[1];
-            QsoRecordCallsign = cs;
-            res = '<span style="color:blue">' + '\n**' + cs + ':**' + msg + '\n</span>\n\n'; // simple markdown + html annotation
+            //console.log('In markdownText() reply part, set QsoRecordCallsign to: ' + cs);
+            res = '<span style="color:blue">' + '**' + cs + ':**' + msg + '</span>\n\n'; // simple markdown + html annotation
         }
     }
 
     return res;
 }
 
-js8.on('rx.directed.to_me', (packet) => {
+// Handle all directed messages sent to anyone. If we have sent to a group
+// then we want to save all the traffic
+js8.on('rx.directed', (packet) => 
+{
+    console.log('rx.directed: ' + packet.value);
+
+    let s = packet.value.substring(packet.value.indexOf(":") + 2);	// note who is being sent to
+    let recipient = s.substring(0, s.indexOf(' '));
+    console.log('s: ' + s);
+    console.log('recipient: ' + recipient);
+
+    if(recipient[0] == '@' && recipient == QsoRecordCallsign) // Is it to a group we are recording?
+    {
+        // We are saving directed messages to this group
+        console.log('Saving for group: ' + recipient);
+        QsoRecordBuffer.push(markdownText(packet.value));
+    }
+});
+
+js8.on('rx.directed.to_me', (packet) => 
+{
     console.log(packet.value);
     console.log();
 
-    QsoRecordBuffer.push(markdownText(packet.value));
+    // Lets see if this is a HB reply of the form 'AB3CDE: VA1UAV HEARTBEAT SNR +17'
+    let qrc = packet.value.substring(0, packet.value.indexOf(":"));	// note who is sending to us
+    let s = packet.value.substring(packet.value.indexOf(":") + 2);  // this is the rest of the directed message
+    let s2 = s.substring(s.indexOf(' ') + 1); // go past our call sign (because it is directed)
 
-    QsoRecordCallsign = packet.value.substring(0, packet.value.indexOf(":"));	    
-});
-
-let lastTxText = "";
-
-function pttSuccessCallback(result) {
-    if(result != "")
-        lastTxText = result;
+    if(s2.indexOf('HEARTBEAT SNR') == 0)   // Is this a HB reply?
+    {
+        console.log('HB reply');
+        HeartbeatReplyBuffer.push(packet.value);
+    }
     else
     {
-        //console.log(lastTxText); // this was the final text in the tx buffer so we capture any type ahead
-        //console.log();
-
-        if(QsoRecordBuffer.length != 0)
+        // If we are not in a QSO then start one
+        if(QsoRecordCallsign == "")
         {
+            QsoRecordCallsign = qrc;	
+            console.log('In rx.directed.to_me and no QSO in progress. Start one with: ' + QsoRecordCallsign);    
+        }
+
+        // Ignore directed messages from others if we are in a QSO
+        if(qrc == QsoRecordCallsign)
+        {
+            // First see if we had a HB reply from the call sign and put that in the buffer first
+            console.log('qrc: ' + qrc);
+            for(i = 0; i < HeartbeatReplyBuffer.length; i++)
+            {
+                console.log('reply buffer entry: ' + HeartbeatReplyBuffer[i]);
+                if(HeartbeatReplyBuffer[i].indexOf(qrc) >= 0)
+                {
+                    // We found one, push in the QsoRecordBuffer and delete from HeartbeatReplyBuffer
+                    QsoRecordBuffer.push(markdownText(HeartbeatReplyBuffer[i]));
+
+                    HeartbeatReplyBuffer.splice(i, 1); // delete it
+                }
+            }
+
+
+            QsoRecordBuffer.push(markdownText(packet.value));
+        }
+    }
+});
+
+// This is a bit tricky because we have to request to get the text that
+// was sent and we do this on receipt of the rig.ptt packet.
+let lastTxText = "";
+let qrc = "";
+
+function hasNumber(myString) 
+{
+    // An amateur radio callsign must include a number
+    return /\d/.test(myString);
+}
+
+function isCallsign(cs)
+{
+    return hasNumber(cs) && alphanumericslash(cs) && (callsign.getAmateurRadioInfoByCallsign(cs) != undefined);
+}
+  
+function pttSuccessCallback(result) 
+{
+    console.log('pttSucessCallback result: ' + result);
+
+    if(result != "")
+    {
+        // We keep saving the text in lastTxText including any type ahead
+        lastTxText = result;
+    }
+    else
+    {
+        // Here we can put the sent text in the buffer but lets check if we
+        // need to start a new QSO because sending HB or to @ALLCALL
+
+        let s = lastTxText.substring(lastTxText.indexOf(":") + 2);
+        qrc = s.substring(0, s.indexOf(' '));	// see who we are sending to
+
+        // check if it seems to be a valid callsign or group else clear it
+        if(!isCallsign(qrc))
+        {
+            // Check and see if sending to a group other than @HB or @ALLCALL
+            if(qrc[0] == '@' && qrc != '@HB' && qrc != '@ALLCALL')
+            {
+                console.log('Sending to a group: ' + qrc);
+            }
+            else
+            {
+                console.log(qrc + " doesn't appear to be a valid call sign!");
+                qrc = "";
+            }
+        }
+
+        // check for HB or directed to ALLCALL (includes CQ)
+        let isHB = (lastTxText.indexOf('@HB') > 0);
+
+        if(isHB || lastTxText.indexOf('@ALLCALL') > 0)
+        {
+            // Either a @HB or @ALLCALL so if a QSO in progress save it and clear it
+
+            if(QsoRecordCallsign != "") // is there a QSO in progress
+            {
+                lastTxText = ""; // we are not saving this text
+                saveQSO();    
+                QsoRecordCallsign = ""; // Show we are not sending to anyone now
+            }
+
+            if(isHB)
+            {
+                // If this is a HB send then clear the reply buffer because we will get new ones
+                HeartbeatReplyBuffer = [];
+            }
+        }
+        else if(qrc != "" && qrc != QsoRecordCallsign) // Have we changed who we are sending to and is it valid?
+        {
+            if(QsoRecordCallsign != "") // qso in progress?
+            {
+                console.log("We've changed who we are sending to: " + qrc);
+                console.log('Save buffer and start new QSO');
+
+                let ltt = lastTxText; // save it and delete because it is for a new QSO
+                lastTxText = "";
+                saveQSO();
+                lastTxText = ltt; // restore to save it in the next QSO
+            }
+
+            QsoRecordCallsign = qrc; // change or begin who we are sending to
+        }
+
+        if(QsoRecordCallsign != "")
+        {
+            // Continue the conversation...
+
+            console.log('put lastTxText in buffer: ' + lastTxText);
+
             QsoRecordBuffer.push(markdownText(lastTxText));
+
             lastTxText = ""; // we've saved it so delete it
         }
     }
@@ -638,10 +814,47 @@ function pttFailureCallback(error) {
   console.error(error);
 }
 
+// Request the TX text - this is essential for recording sent messages!
 js8.on('rig.ptt', (packet) => {
 	//console.log('[Rig] PTT is %s', packet.value);
 	js8.tx.getText().then(pttSuccessCallback, pttFailureCallback);
 });
+
+function saveQSO()
+{
+    if(lastTxText != "")
+    {
+        QsoRecordBuffer.push(markdownText(lastTxText));
+        lastTxText = ""; // we've saved it so delete it
+    }
+
+    //console.log(packet.value);
+    //console.log();
+    //console.log(packet.params);
+    //console.log();
+    console.log("We are talking to: ");
+    console.log(QsoRecordCallsign);
+    console.log("Here is our record buffer to save: ");
+    console.log(QsoRecordBuffer);
+
+    // Save the file in format using timestamp as part of filename, qsodatadir/VA1UAV/qd1610822723539.md (for example)
+    dir = qsodatadir + '/' + QsoRecordCallsign;
+    if(!fs.existsSync(dir)){
+        fs.mkdirSync(dir, { recursive: true }); // make the directory recursively
+    }
+
+    var qsofile = fs.createWriteStream(dir + '/qd' + Date.now() + '.md');
+
+    for(i = 0; i < QsoRecordBuffer.length; i++)
+        qsofile.write(QsoRecordBuffer[i]); 
+
+    qsofile.end();
+
+    win.webContents.send('savedqso', QsoRecordCallsign); // tell the renderer we have saved a qso so it can bold the callsign in the table
+     
+    QsoRecordBuffer = [];
+    QsoRecordCallsign = "";
+}
 
 js8.on('packet', (packet) => {
     // I don't think we need this but just in case the 100ms timer call isn't enough...
@@ -658,38 +871,17 @@ js8.on('packet', (packet) => {
     // Check for the LOG.QSO message which happens when a log entry has been saved
     if(packet.type == "LOG.QSO")
     {
-        if(lastTxText != "")
-        {
-            QsoRecordBuffer.push(markdownText(lastTxText));
-            lastTxText = ""; // we've saved it so delete it
-        }
+        saveQSO();
+    }
+});
 
-        console.log(packet.value);
-        console.log();
-        console.log(packet.params);
-        console.log();
-        console.log("We are talking to: ");
-        console.log(QsoRecordCallsign);
-        console.log("Here is our record buffer to save: ");
-        console.log(QsoRecordBuffer);
+nodeCleanup(function (exitCode, signal) 
+{
+    if(QsoRecordCallsign != "")
+    {
+        console.log('Save the QSO in progress before exiting');
 
-        // Save the file in format using timestamp as part of filename, qsodatadir/VA1UAV/qd1610822723539.md (for example)
-        dir = qsodatadir + '/' + QsoRecordCallsign;
-        if(!fs.existsSync(dir)){
-            fs.mkdirSync(dir, { recursive: true }); // make the directory recursively
-        }
-
-        var qsofile = fs.createWriteStream(dir + '/qd' + Date.now() + '.md');
-
-        for(i = 0; i < QsoRecordBuffer.length; i++)
-            qsofile.write(QsoRecordBuffer[i]); 
-
-        qsofile.end();
-
-        // also create a file with extension .info to hold the start and stop time
-         
-        QsoRecordBuffer = [];
-        QsoRecordCallsign = "";
+        saveQSO();
     }
 });
 
@@ -709,11 +901,11 @@ js8.on('station.callsign', (packet) => {
 });
 
 // Function to check letters and numbers for callsign validation
-function alphanumeric(inputtxt)
+function alphanumericslash(inputtxt)
 {
-    let letterNumber = /^[0-9a-zA-Z/]+$/;
+    let letterNumberSlash = /^[0-9a-zA-Z/]+$/;
     
-    if(inputtxt.match(letterNumber))
+    if(inputtxt.match(letterNumberSlash))
     {
         return true;
     }
@@ -751,9 +943,9 @@ function processPacket(packet)
 	{
 		let cs = value.substring(0, n);	
 
-        // In the logic following, checking for alphanumeric is not perfect however 
+        // In the logic following, checking for alphanumeric and slash is not perfect however 
         // there is no real indication in JS8Call that there is a call sign in a packet...
-        if(cs != "" && alphanumeric(cs) && callsigns.indexOf(cs) < 0) 
+        if(cs != "" && alphanumericslash(cs) && callsigns.indexOf(cs) < 0) 
         {
             // sending range and bearing to renderer
             //console.log('Station: ' + js8.station.grid);

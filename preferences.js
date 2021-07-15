@@ -31,7 +31,8 @@ const preferences = new ElectronPreferences({
     'defaults': {
             'settings': {
                 'distance_unit': 'km',
-                'remote_ip' : '127.0.0.1'
+                'remote_ip': '127.0.0.1',
+                'font_size': '14'
             },
     },
     'browserWindowOverrides': {
@@ -66,6 +67,11 @@ const preferences = new ElectronPreferences({
                                 'key': 'remote_ip',
                                 'type': 'text',
                             },
+                            {
+                                'label': 'Font Size (default is 14)',
+                                'key': 'font_size',
+                                'type': 'text',
+                            },
                         ]
                     }
                 ]
@@ -86,7 +92,7 @@ const preferences = new ElectronPreferences({
                                 'type': 'message',
                             },
                             {
-                                'heading': 'JS8 Assistant Data Folder',
+                                'heading': 'JS8Assistant Preferences Folder',
                                 'content': datadir,
                                 'type': 'message',
                             },

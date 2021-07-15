@@ -35,13 +35,15 @@ let qsodatadir = "";
 const preferences = ipcRenderer.sendSync('getPreferences');
 let distanceUnit = preferences.settings.distance_unit;
 console.log(distanceUnit);
+let fontSize = preferences.settings.font_size;
+console.log(fontSize);
 
-// Function to check letters and numbers for callsign validation
-function alphanumeric(inputtxt)
+// Function to check letters numbers and slash for callsign validation
+function alphanumericslash(inputtxt)
 {
-    let letterNumber = /^[0-9a-zA-Z/]+$/;
+    let letterNumberSlash = /^[0-9a-zA-Z/]+$/;
     
-    if(inputtxt.match(letterNumber))
+    if(inputtxt.match(letterNumberSlash))
     {
         return true;
     }
@@ -89,6 +91,30 @@ ipcRenderer.on('rig.ptt.off', () =>
     $('#indicator-ptt').removeClass('btn-secondary btn-danger').addClass('btn-success');
 });
 
+ipcRenderer.on('savedqso', (event, message) => 
+{
+    let cs = message;
+    let rows = table.searchRows("callsign", "=", cs);
+
+    // Note we have to modify the callsign first by adding a '*' to it then modify it again
+    // in order to get the call sign to turn bold (because the data has to change to get the
+    // cell formatter to do anything)
+    rows[0].update({callsign:cs + '*'});
+    rows[0].update({callsign:cs});
+
+    // If the row for that call sign happens to be selected then enable the qsohistory button
+    let selectedRows = table.getSelectedRows();
+    let rowCount = selectedRows.length;
+
+    if(rowCount == 1)
+    {
+        let rowData = selectedRows[0].getData();
+        let callsign = rowData.callsign;
+        if(callsign == cs)
+            $('#buttonhistory').removeAttr('disabled');
+    }
+});
+
 
 let scrolling = 0;
 
@@ -114,9 +140,9 @@ ipcRenderer.on('activity', (event, message) =>
 	    
 	    let rows = table.searchRows("callsign", "=", cs);
         
-        // In the logic following, checking for alphanumeric is not perfect however 
+        // In the logic following, checking for alphanumeric and slash is not perfect however 
         // there is no real indication in JS8Call that there is a call sign in a packet...
-        if(cs != "" && alphanumeric(cs)) 
+        if(cs != "" && alphanumericslash(cs)) 
         {
             let stats;
             
@@ -307,6 +333,19 @@ function formatUtcCell(cell, formatterParams, onRendered)
     return timeFromTimestamp(cell.getValue());
 }
 
+function formatCallsignCell(cell, formatterParams, onRendered)
+{
+    let res = "";
+    let cs = cell.getValue();
+
+    if(fs.existsSync(qsodatadir + "/" + cs))
+        res = "<span style='font-weight:bold;'>" + cs + "</span>";
+    else
+        res = cs;
+
+    return res;
+}
+
 function formatRngCell(cell, formatterParams, onRendered)
 {
     if(distanceUnit == "km")
@@ -317,11 +356,30 @@ function formatRngCell(cell, formatterParams, onRendered)
         return cell.getValue();
 }
 
- 
+//define custom formatter to change font size in column header
+var formatTitle = function(cell, formatterParams, onRendered){
+
+    //set font size
+    //cell.getElement().style.fontSize = fontSize.toString() + "px";
+    cell.getElement().style.fontSize = fontSize + "px";
+
+    return cell.getValue();
+}
+
+const ttCS = "Call sign of contact";
+const ttOFS = "Offset of contact's signal in Hz";
+const ttTD = "Time delta of signal from UTC second in milliseconds";
+const ttUTC = "UTC timestamp in seconds";
+const ttRNG = "RaNGe to contact in Miles or Km according to settings";
+const ttBRG = "Bearing to contact in degrees";
+const ttSNR = "Signal to noise ratio of contact's signal";
+const ttSTA = "HeartBeat (HB), CQ or QSO";
+
 //create Tabulator on DOM element with id "data-table"
 let table = new Tabulator("#data-table", {
  	height:367, // set height of table (in CSS or here), this enables the Virtual DOM and improves render speed dramatically (can be any valid css height value)
     selectable:true,
+    tooltipsHeader:true,
     rowSelected:function(row){
         row.getElement().style.backgroundColor = "#85C1E9"; // show the row is selected (blue colour)
                       
@@ -440,6 +498,8 @@ let table = new Tabulator("#data-table", {
         let rowCount = selectedRows.length;
         let rowSelected = false;
         
+        row.getElement().style.fontSize = fontSize + "px";
+
         if(rowCount >= 1)
         {
             for(i = 0; i < rowCount; i++)
@@ -475,14 +535,15 @@ let table = new Tabulator("#data-table", {
         }
     },
  	columns:[ //Define Table Columns
-	 	{title:"Call Sign", field:"callsign", width:125},
-	 	{title:"Offset", field:"offset", width:80, sorter:"number"},
-	 	{title:"Time Delta (ms)", field:"timedrift", width:150, sorter:"number"},
-	 	{title:"UTC", field:"utc", width:125, formatter:formatUtcCell, headerSortStartingDir:"desc"},
-	 	{title:"RNG", field:"rng", width:75, formatter:formatRngCell, sorter:"number"},
-	 	{title:"BRG", field:"brg", width:75, sorter:"number"},
-	 	{title:"SNR", field:"snr", width:75, sorter:"number"},
-	 	{title:"Status", field:"status", width:110, headerMenu:statusHeaderMenu},
+        // These column widths were hand crafted for the default font size of 14 to accommodating other sizes is a bit of a kludge...
+        {title:"Call Sign", field:"callsign", titleFormatter:formatTitle, width:Math.floor(fontSize*125/14), formatter:formatCallsignCell, headerTooltip:ttCS},
+        {title:"Offset", field:"offset", titleFormatter:formatTitle, width:Math.floor(fontSize*80/14+Math.abs(14-fontSize)*5), sorter:"number", headerTooltip:ttOFS},
+	 	{title:"Time Delta (ms)", field:"timedrift", titleFormatter:formatTitle, width:Math.floor(fontSize*150/14+Math.abs(14-fontSize)*5), sorter:"number", headerTooltip:ttTD},
+	 	{title:"UTC", field:"utc", titleFormatter:formatTitle, width:Math.floor(fontSize*125/14+Math.abs(14-fontSize)*2), formatter:formatUtcCell, headerSortStartingDir:"desc", headerTooltip:ttUTC},
+	 	{title:"RNG", field:"rng", titleFormatter:formatTitle, width:Math.floor(fontSize*75/14+Math.abs(14-fontSize)*3), formatter:formatRngCell, sorter:"number", headerTooltip:ttRNG},
+	 	{title:"BRG", field:"brg", titleFormatter:formatTitle, width:Math.floor(fontSize*75/14+Math.abs(14-fontSize)*2), sorter:"number", headerTooltip:ttBRG},
+	 	{title:"SNR", field:"snr", titleFormatter:formatTitle, width:Math.floor(fontSize*75/14+Math.abs(14-fontSize)*2), sorter:"number", headerTooltip:ttSNR},
+	 	{title:"Status", field:"status", titleFormatter:formatTitle, width:Math.floor(fontSize*110/14+Math.abs(14-fontSize)*5), headerMenu:statusHeaderMenu, headerTooltip:ttSTA},
 	 	{title:"Info", field:"info", visible:false},
 	 	{title:"Grid", field:"grid", visible:false}
  	],
