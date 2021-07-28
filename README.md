@@ -37,7 +37,7 @@ is cross platform. It should run under MacOS, Windows 10 and at least Debian fla
 ### Binaries
 The are binaries for Windows, Linux and MacOS for the latest release:
 
-https://github.com/RocketManRC/JS8Assistant/releases/tag/v0.21.2
+https://github.com/RocketManRC/JS8Assistant/releases/tag/v0.30.0
 
 The Windows packages have been checked at virustotal.com but you probably want to check them again yourself.
 
