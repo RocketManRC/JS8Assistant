@@ -227,7 +227,8 @@ function createWindow()
         x: mainWindowState.bounds.x,
         y: mainWindowState.bounds.y,
         webPreferences: {
-        defaultFontSize: preferences.value('settings.font_size'), 
+        defaultFontSize: preferences.value('settings.font_size'),
+        contextIsolation: false, 
         nodeIntegration: true
         }
     });
@@ -242,7 +243,7 @@ function createWindow()
   }));
   
   // Open the DevTools for testing if needed
-  // win.webContents.openDevTools();
+  //win.webContents.openDevTools();
 
   const storemainWindowState = function() 
   { 
@@ -355,9 +356,12 @@ function createQsoHistoryWindow(callsign)
     x: qsoWindowState.bounds.x,
     y: qsoWindowState.bounds.y,
     webPreferences: {
+      contextIsolation: false, 
       nodeIntegration: true
     }
   });
+  
+  //winQsoHistory.webContents.openDevTools();
 
   const storeqsoWindowState = function() 
   { 
@@ -843,20 +847,23 @@ function saveQSO()
     console.log(QsoRecordBuffer);
 
     // Save the file in format using timestamp as part of filename, qsodatadir/VA1UAV/qd1610822723539.md (for example)
-    dir = qsodatadir + '/' + QsoRecordCallsign;
-    if(!fs.existsSync(dir)){
-        fs.mkdirSync(dir, { recursive: true }); // make the directory recursively
-    }
+    // Don't save if only one line in file as it is probably something like an orphaned reply.
+    if(QsoRecordBuffer.length > 1)
+    {
+        dir = qsodatadir + '/' + QsoRecordCallsign;
+        if(!fs.existsSync(dir)){
+            fs.mkdirSync(dir, { recursive: true }); // make the directory recursively
+        }
 
-    var qsofile = fs.createWriteStream(dir + '/qd' + Date.now() + '.md');
+        var qsofile = fs.createWriteStream(dir + '/qd' + Date.now() + '.md');
 
-    for(i = 0; i < QsoRecordBuffer.length; i++)
-        qsofile.write(QsoRecordBuffer[i]); 
+        for(i = 0; i < QsoRecordBuffer.length; i++)
+            qsofile.write(QsoRecordBuffer[i]); 
 
-    qsofile.end();
+        qsofile.end();
 
-    win.webContents.send('savedqso', QsoRecordCallsign); // tell the renderer we have saved a qso so it can bold the callsign in the table
-     
+        win.webContents.send('savedqso', QsoRecordCallsign); // tell the renderer we have saved a qso so it can bold the callsign in the table
+    }   
     QsoRecordBuffer = [];
     QsoRecordCallsign = "";
 }

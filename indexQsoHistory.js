@@ -120,6 +120,23 @@ function dateFromTimestamp(ts)
     return formattedDate;
 }
 
+const numberOfDirFiles = function(dirPath) 
+{
+  files = fs.readdirSync(dirPath)
+
+  let arrayOfFiles = []
+
+  files.forEach(function(file) {
+    if (fs.statSync(dirPath + "/" + file).isDirectory()) {
+      arrayOfFiles = getAllDirFiles(dirPath + "/" + file, arrayOfFiles)
+    } else {
+      arrayOfFiles.push(file)
+    }
+  })
+
+  return arrayOfFiles.length;
+}
+
 /* Here is the example custom formatter from the Tabulator docs
 
 {title:"Name", field:"name", formatter:function(cell, formatterParams, onRendered){
@@ -243,7 +260,33 @@ let table = new Tabulator("#data-table", {
 
                 //console.log(filepath);
                 shell.openExternal('file://' + filepath);
-            }
+            },
+        },
+        {
+            label:"Delete QSO",
+            action:function(e, row){
+                let filename = row.getData().filename;
+                let callsign = $("#callsign").text();                
+                let folderpath = qsodatadir + '/' + callsign;
+                let filepath = qsodatadir + '/' + callsign + "/" + filename;
+                
+                fs.unlinkSync(filepath);
+                
+                if(numberOfDirFiles(folderpath) == 0)
+                {
+                    console.log("No QSO files left, deleting folder");
+                    
+                    fs.rmdirSync(folderpath); 
+                }
+
+                let converter = new showdown.Converter();
+                let html = converter.makeHtml("(deleted)");                        
+                $("#qso-data").html(html);  
+                
+                row.delete();
+                //console.log(filepath);
+                //shell.openExternal('file://' + filepath);
+            },
         }
     ],
  	data:tabledata, //assign data to table

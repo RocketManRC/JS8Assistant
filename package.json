@@ -1,6 +1,6 @@
 {
   "name": "JS8Assistant",
-  "version": "0.30.0",
+  "version": "0.40.0",
   "description": "An application to assist with using JS8Call",
   "main": "main.js",
   "scripts": {
@@ -62,7 +62,7 @@
     "tabulator-tables": "^4.9.3"
   },
   "devDependencies": {
-    "electron": "^10.4.7",
+    "electron": "^16.0.7",
     "electron-builder": "22.11.7",
     "modclean": "3.0.0-beta.1"
   }
