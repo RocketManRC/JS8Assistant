@@ -126,12 +126,9 @@ const numberOfDirFiles = function(dirPath)
 
   let arrayOfFiles = []
 
-  files.forEach(function(file) {
-    if (fs.statSync(dirPath + "/" + file).isDirectory()) {
-      arrayOfFiles = getAllDirFiles(dirPath + "/" + file, arrayOfFiles)
-    } else {
-      arrayOfFiles.push(file)
-    }
+  files.forEach(function(file) 
+  {
+    arrayOfFiles.push(file)
   })
 
   return arrayOfFiles.length;

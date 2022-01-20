@@ -488,6 +488,41 @@ function createWindowWithMenu()
             } 
         },
         {
+            label:'Delete invalid QSOs',
+            enabled: true,
+            id: 'dq',
+            click() 
+            {
+                const ProgressBar = require('electron-progressbar');
+
+                var progressBar = new ProgressBar({
+                    text: 'Deleting invalid QSOs...',
+                    detail: 'Wait...'
+                });
+                
+                progressBar
+                .on('completed', function() {
+                    console.info(`completed...`);
+                    progressBar.detail = 'Task completed. Exiting...';
+                })
+                .on('aborted', function() {
+                    console.info(`aborted...`);
+                });
+                                
+                var cp = require('child_process');
+                let p = path.resolve(__dirname, 'deleteqsos.js');
+
+                //console.log(p);
+
+                let sp = cp.fork(p, []);
+
+                sp.on('exit', (code) => {
+                    console.log(`child process exited with code ${code}`);
+                    progressBar.setCompleted();
+                  });
+            } 
+        },
+        {
             label:'Exit',
             accelerator: 'Cmd+Q',
             click() 
