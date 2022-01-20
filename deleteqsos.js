@@ -5,6 +5,7 @@
 var fs = require('fs');
 const homedir = require('os').homedir();
 const config = require('./config');
+const util = require('util');
 
 const MINSIZE = 200; // can change this if 200 is too small or too large
 
@@ -65,19 +66,11 @@ function deleteqsos()
 {
     let qsodatadir = config.qsodatadir;
 
-    console.log();
-    console.log('homedir: ' + homedir);
-    console.log();
-    
     if(qsodatadir == "") // if no directory in config.js then use the default one
       qsodatadir = homedir + '/.js8assistant/qsodata/'; // this is the default data directory
     
-    console.log('The QSO data directory (qsodatadir) is: ');
-    console.log(qsodatadir);
-    console.log();
-    
-    //let files = dirFiles(qsodatadir);
-    
+    console.log("QSO Data Folder: " + qsodatadir);
+        
     let dirs = getDirectories(qsodatadir);
     
     dirs.forEach(dir => 
@@ -118,5 +111,18 @@ function deleteqsos()
       }
     });
 }
+
+let logPath = process.argv[2];
+
+let ourLog = logPath.replace("main.log", "deleteqsos.log");
+
+let log_file = fs.createWriteStream(ourLog, {flags : 'w'});
+let log_stdout = process.stdout;
+
+console.log = function(d) 
+{ 
+  log_file.write(util.format(d) + '\n');
+  log_stdout.write(util.format(d) + '\n');
+};
 
 deleteqsos();

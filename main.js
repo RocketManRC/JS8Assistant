@@ -514,7 +514,7 @@ function createWindowWithMenu()
 
                 //console.log(p);
 
-                let sp = cp.fork(p, []);
+                let sp = cp.fork(p, [logPath]);
 
                 sp.on('exit', (code) => {
                     console.log(`child process exited with code ${code}`);
