@@ -446,6 +446,14 @@ let table = new Tabulator("#data-table", {
         {
             row.getElement().style.backgroundColor = "#66FFB2";
         }
+        
+        // force the callsign cell format to be updated in case that callsign was deleted
+        // after deleting all its QSO data
+        let rowData = row.getData();
+        let cs = rowData.callsign;
+        row.update({callsign:cs + '*'});
+        row.update({callsign:cs});
+        
         //else if(row.getData().status == "***") // this is for the directed callsign in JS8Call
         //{
         //    row.getElement().style.backgroundColor = "#FFA07A";

@@ -1,6 +1,6 @@
 {
   "name": "JS8Assistant",
-  "version": "0.40.0",
+  "version": "0.40.2",
   "description": "An application to assist with using JS8Call",
   "main": "main.js",
   "scripts": {

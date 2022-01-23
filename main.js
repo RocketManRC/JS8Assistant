@@ -883,7 +883,12 @@ function saveQSO()
 
     // Save the file in format using timestamp as part of filename, qsodatadir/VA1UAV/qd1610822723539.md (for example)
     // Don't save if only one line in file as it is probably something like an orphaned reply.
-    if(QsoRecordBuffer.length > 1)
+    // *** Changes this to be 200 bytes or more to match the deleteqsos.js logic.
+    let byteCount = 0;
+    QsoRecordBuffer.forEach(element => byteCount += Buffer.from(element).length);
+
+    //if(QsoRecordBuffer.length > 1)
+    if(byteCount >= 200)
     {
         dir = qsodatadir + '/' + QsoRecordCallsign;
         if(!fs.existsSync(dir)){
@@ -898,7 +903,10 @@ function saveQSO()
         qsofile.end();
 
         win.webContents.send('savedqso', QsoRecordCallsign); // tell the renderer we have saved a qso so it can bold the callsign in the table
-    }   
+    }  
+    else
+        console.log("Not saving QSO because only " + byteCount + "bytes!") 
+        
     QsoRecordBuffer = [];
     QsoRecordCallsign = "";
 }
