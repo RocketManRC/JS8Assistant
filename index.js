@@ -38,6 +38,9 @@ console.log(distanceUnit);
 
 let fontSize = preferences.settings.font_size;
 
+var ageTimer; // timer to update the Age cells in the table
+ageTimer = setInterval(updateAgeCells, 5000); // 5 second timer
+
 // Function to check letters numbers and slash for callsign validation
 function alphanumericslash(inputtxt)
 {
@@ -297,6 +300,43 @@ let statusHeaderMenu = [
     },
 ];
 
+function updateAgeCells()
+{
+    let rows = table.getRows();
+    
+    rows.forEach(row => 
+    {
+        let rowData = row.getData();
+        let ts = rowData.utc;
+        row.update({utc:ts + 1});
+        row.update({utc:ts});    
+    });
+}
+
+function ageFromTimestamp(ts)
+{
+    let secondsNow = Math.floor(new Date().getTime() / 1000);
+    let secondsTs = Math.floor(ts / 1000);
+    let age = secondsNow - secondsTs;
+    
+    let ageString = "";
+    
+    if(age < 15)
+        ageString = "now";
+    else if(age < 30)
+        ageString = "15s";
+    else if(age < 45)
+        ageString = "30s";
+    else if(age < 60)
+        ageString = "45s";
+    else if(age < 3600)
+        ageString = Math.floor(age / 60) + 'm';
+    else
+        ageString = Math.floor(age / 3600) + 'h';
+   
+    return ageString;
+}
+
 function timeFromTimestamp(ts)
 {
     let unix_timestamp = ts
@@ -330,7 +370,8 @@ function timeFromTimestamp(ts)
 
 function formatUtcCell(cell, formatterParams, onRendered)
 {
-    return timeFromTimestamp(cell.getValue());
+    //return timeFromTimestamp(cell.getValue());
+    return ageFromTimestamp(cell.getValue());
 }
 
 function formatCallsignCell(cell, formatterParams, onRendered)
@@ -547,7 +588,7 @@ let table = new Tabulator("#data-table", {
         {title:"Call Sign", field:"callsign", titleFormatter:formatTitle, width:Math.floor(fontSize*125/14), formatter:formatCallsignCell, headerTooltip:ttCS},
         {title:"Offset", field:"offset", titleFormatter:formatTitle, width:Math.floor(fontSize*80/14+Math.abs(14-fontSize)*5), sorter:"number", headerTooltip:ttOFS},
 	 	{title:"Time Delta (ms)", field:"timedrift", titleFormatter:formatTitle, width:Math.floor(fontSize*150/14+Math.abs(14-fontSize)*5), sorter:"number", headerTooltip:ttTD},
-	 	{title:"UTC", field:"utc", titleFormatter:formatTitle, width:Math.floor(fontSize*125/14+Math.abs(14-fontSize)*2), formatter:formatUtcCell, headerSortStartingDir:"desc", headerTooltip:ttUTC},
+	 	{title:"Age", field:"utc", titleFormatter:formatTitle, width:Math.floor(fontSize*125/14+Math.abs(14-fontSize)*2), formatter:formatUtcCell, headerSortStartingDir:"desc", headerTooltip:ttUTC},
 	 	{title:"RNG", field:"rng", titleFormatter:formatTitle, width:Math.floor(fontSize*75/14+Math.abs(14-fontSize)*3), formatter:formatRngCell, sorter:"number", headerTooltip:ttRNG},
 	 	{title:"BRG", field:"brg", titleFormatter:formatTitle, width:Math.floor(fontSize*75/14+Math.abs(14-fontSize)*2), sorter:"number", headerTooltip:ttBRG},
 	 	{title:"SNR", field:"snr", titleFormatter:formatTitle, width:Math.floor(fontSize*75/14+Math.abs(14-fontSize)*2), sorter:"number", headerTooltip:ttSNR},
